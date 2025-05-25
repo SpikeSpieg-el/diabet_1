@@ -1,0 +1,1141 @@
+--- START OF FILE index.html ---
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Дневник диабетика</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Custom styles if needed, e.g., for modal transitions or specific overrides */
+        .modal {
+            display: none; /* Hidden by default */
+        }
+        .modal.show {
+            display: flex; /* Show when active */
+        }
+        /* Ensure charts are responsive */
+        .chart-container {
+            position: relative;
+            height: 250px; /* Adjust as needed */
+            width: 100%;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-900 dark:to-slate-800 transition-colors duration-300">
+    <div id="app" class="container mx-auto p-4 max-w-7xl">
+        <!-- Заголовок -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-6 dark:bg-slate-800">
+            <div class="flex justify-between items-start">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2">Дневник диабетика</h1>
+                    <p class="text-gray-600 dark:text-gray-300">Управление питанием, контроль глюкозы и расчет дозы инсулина</p>
+                </div>
+                <button id="darkModeToggle" title="Переключить тему" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
+                    {/* Icon will be set by JavaScript */}
+                </button>
+            </div>
+        </div>
+
+        <!-- Навигация -->
+        <div class="bg-white rounded-xl shadow-lg p-4 mb-6 dark:bg-slate-800">
+            <div id="navigation-buttons" class="flex flex-wrap gap-2">
+                <button data-view="calendar" class="nav-button flex items-center px-4 py-2 rounded-lg transition-colors">
+                    <i data-lucide="calendar" class="w-5 h-5 mr-2"></i> Календарь
+                </button>
+                <button data-view="analytics" class="nav-button flex items-center px-4 py-2 rounded-lg transition-colors">
+                    <i data-lucide="trending-up" class="w-5 h-5 mr-2"></i> Аналитика
+                </button>
+                <button data-view="reports" class="nav-button flex items-center px-4 py-2 rounded-lg transition-colors">
+                    <i data-lucide="bar-chart-3" class="w-5 h-5 mr-2"></i> Отчеты
+                </button>
+                <button data-view="products" class="nav-button flex items-center px-4 py-2 rounded-lg transition-colors">
+                    <i data-lucide="database" class="w-5 h-5 mr-2"></i> Продукты
+                </button>
+            </div>
+        </div>
+
+        <!-- Календарь View -->
+        <div id="calendarView" class="view-content grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <!-- Календарная сетка -->
+            <div class="bg-white rounded-xl shadow-lg p-6 dark:bg-slate-800">
+                <h2 id="calendarHeader" class="text-xl font-semibold mb-4 dark:text-gray-100"></h2>
+                <div class="grid grid-cols-7 gap-2 mb-4">
+                    <!-- Дни недели -->
+                </div>
+                <div id="calendarGrid" class="grid grid-cols-7 gap-2">
+                    <!-- Дни -->
+                </div>
+            </div>
+
+            <!-- Приемы пищи за день -->
+            <div class="bg-white rounded-xl shadow-lg p-6 dark:bg-slate-800">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 id="mealsHeader" class="text-xl font-semibold dark:text-gray-100">Питание</h2>
+                    <button id="showAddMealModalBtn" class="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 transition-colors">
+                        <i data-lucide="plus" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                <div id="dayMealsContainer" class="space-y-4 max-h-96 overflow-y-auto">
+                    <!-- Записи о приемах пищи -->
+                </div>
+            </div>
+
+            <!-- Уровень глюкозы за день -->
+            <div class="bg-white rounded-xl shadow-lg p-6 dark:bg-slate-800">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 id="glucoseHeader" class="text-xl font-semibold dark:text-gray-100">Глюкоза</h2>
+                    <button id="showAddGlucoseModalBtn" class="bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 transition-colors">
+                        <i data-lucide="plus" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                <div id="dayGlucoseContainer" class="space-y-3 max-h-96 overflow-y-auto">
+                    <!-- Записи глюкозы -->
+                </div>
+                <div id="dayGlucoseChartContainer" class="mt-6" style="display: none;">
+                    <h3 class="text-sm font-medium mb-2 dark:text-gray-300">График за день</h3>
+                    <div class="chart-container h-32">
+                        <canvas id="dayGlucoseChartCanvas"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Аналитика View -->
+        <div id="analyticsView" class="view-content grid grid-cols-1 lg:grid-cols-2 gap-6" style="display: none;">
+            <div class="bg-white rounded-xl shadow-lg p-6 dark:bg-slate-800">
+                <h2 class="text-xl font-semibold mb-4 dark:text-gray-100">Средний уровень глюкозы (7 дней)</h2>
+                <div class="chart-container h-64">
+                    <canvas id="weekGlucoseChartCanvas"></canvas>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-lg p-6 dark:bg-slate-800">
+                <h2 class="text-xl font-semibold mb-4 dark:text-gray-100">Углеводы и инсулин (7 дней)</h2>
+                <div class="chart-container h-64">
+                    <canvas id="carbsInsulinChartCanvas"></canvas>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-lg p-6 dark:bg-slate-800">
+                <h2 class="text-xl font-semibold mb-4 dark:text-gray-100">Активность за неделю</h2>
+                <div class="chart-container h-64">
+                    <canvas id="activityChartCanvas"></canvas>
+                </div>
+            </div>
+            <div id="weekSummaryContainer" class="bg-white rounded-xl shadow-lg p-6 dark:bg-slate-800">
+                <h2 class="text-xl font-semibold mb-4 dark:text-gray-100">Сводка за неделю</h2>
+                <!-- Сводка будет вставлена сюда -->
+            </div>
+        </div>
+
+        <!-- Отчеты View -->
+        <div id="reportsView" class="view-content space-y-6" style="display: none;">
+            <div class="bg-white rounded-xl shadow-lg p-6 dark:bg-slate-800">
+                <h2 class="text-xl font-semibold mb-4 dark:text-gray-100">Детальный отчет за неделю</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full border-collapse">
+                        <thead class="dark:text-gray-200">
+                            <tr class="bg-gray-50 dark:bg-slate-700">
+                                <th class="border p-3 text-left dark:border-slate-600">Дата</th>
+                                <th class="border p-3 text-left dark:border-slate-600">Приемы пищи</th>
+                                <th class="border p-3 text-left dark:border-slate-600">Углеводы (г)</th>
+                                <th class="border p-3 text-left dark:border-slate-600">Инсулин (ед)</th>
+                                <th class="border p-3 text-left dark:border-slate-600">Ср. глюкоза</th>
+                                <th class="border p-3 text-left dark:border-slate-600">Измерения</th>
+                            </tr>
+                        </thead>
+                        <tbody id="weekReportTableBody" class="dark:text-gray-300 dark:border-slate-600">
+                            <!-- Данные отчета -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div id="glucoseControlAnalysisContainer" class="bg-white rounded-xl shadow-lg p-6 dark:bg-slate-800">
+                    <h3 class="text-lg font-semibold mb-4 dark:text-gray-100">Анализ контроля глюкозы</h3>
+                    <!-- Анализ будет вставлен сюда -->
+                </div>
+                <div id="recommendationsContainer" class="bg-white rounded-xl shadow-lg p-6 dark:bg-slate-800">
+                    <h3 class="text-lg font-semibold mb-4 dark:text-gray-100">Рекомендации</h3>
+                    <!-- Рекомендации -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Продукты View -->
+        <div id="productsView" class="view-content bg-white rounded-xl shadow-lg p-6 dark:bg-slate-800" style="display: none;">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-semibold dark:text-gray-100">Реестр продуктов</h2>
+                <button id="showAddProductModalBtn" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 transition-colors flex items-center">
+                    <i data-lucide="plus" class="w-5 h-5 mr-2"></i> Добавить продукт
+                </button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse">
+                    <thead class="dark:text-gray-200">
+                        <tr class="bg-gray-50 dark:bg-slate-700">
+                            <th class="border p-3 text-left dark:border-slate-600">Продукт</th>
+                            <th class="border p-3 text-left dark:border-slate-600">Углеводы (г/100г)</th>
+                            <th class="border p-3 text-left dark:border-slate-600">Инсулин (ед/ХЕ)</th>
+                            <th class="border p-3 text-left dark:border-slate-600">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productsTableBody" class="dark:text-gray-300 dark:border-slate-600">
+                        <!-- Список продуктов -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Модальное окно добавления/редактирования продукта -->
+        <div id="addProductModal" class="modal fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 items-center justify-center p-4 z-50">
+            <div class="bg-white rounded-xl p-6 w-full max-w-md dark:bg-slate-800">
+                <h3 id="addProductModalTitle" class="text-lg font-semibold mb-4 dark:text-gray-100">Добавить продукт</h3>
+                <form id="addProductForm" class="space-y-4">
+                    <input type="hidden" id="editingProductId">
+                    <input type="text" id="newProductName" placeholder="Название продукта" class="w-full p-3 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-gray-50 dark:placeholder-gray-400" required>
+                    <input type="number" id="newProductCarbs" placeholder="Углеводы (г на 100г продукта)" class="w-full p-3 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-gray-50 dark:placeholder-gray-400" required step="0.1">
+                    <input type="number" id="newProductInsulinRatio" placeholder="Инсулин (единиц на 1 ХЕ)" class="w-full p-3 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-gray-50 dark:placeholder-gray-400" required step="0.1">
+                    <div class="flex space-x-3">
+                        <button type="submit" id="addProductSubmitBtn" class="flex-1 bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 transition-colors">Добавить</button>
+                        <button type="button" id="cancelAddProductBtn" class="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 dark:bg-slate-600 dark:text-gray-200 dark:hover:bg-slate-500 transition-colors">Отмена</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Модальное окно добавления приема пищи -->
+        <div id="addMealModal" class="modal fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 items-center justify-center p-4 z-50">
+            <div class="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto dark:bg-slate-800">
+                <h3 class="text-lg font-semibold mb-4 dark:text-gray-100">Добавить прием пищи</h3>
+                <form id="addMealForm" class="space-y-4">
+                    <input type="time" id="newMealTime" class="w-full p-3 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-gray-50 dark:[color-scheme:dark]" required>
+                    <div class="border rounded-lg p-4 dark:border-slate-700">
+                        <h4 class="font-medium mb-3 dark:text-gray-200">Добавить продукт:</h4>
+                        <div class="flex space-x-2 mb-3">
+                            <select id="newMealSelectedProduct" class="flex-1 p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-gray-50">
+                                <option value="">Выберите продукт</option>
+                                <!-- Опции продуктов -->
+                            </select>
+                            <input type="number" id="newMealProductAmount" placeholder="Вес (г)" class="w-24 p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-gray-50 dark:placeholder-gray-400" step="1" min="1">
+                            <button type="button" id="addProductToMealBtn" class="px-3 py-2 rounded-lg bg-green-500 text-white hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 transition-colors">
+                                <i data-lucide="plus" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="newMealProductsListContainer" class="border rounded-lg p-4 dark:border-slate-700" style="display:none;">
+                        <h4 class="font-medium mb-3 dark:text-gray-200">Выбранные продукты:</h4>
+                        <div id="newMealProductsList" class="space-y-2">
+                            <!-- Список добавленных продуктов -->
+                        </div>
+                        <div id="newMealCalculation" class="mt-3 p-3 bg-blue-50 rounded dark:bg-slate-700 dark:text-gray-300" style="display:none;">
+                            <!-- Расчеты -->
+                        </div>
+                    </div>
+                    <input type="number" id="newMealActualInsulin" step="0.1" placeholder="Фактически введено инсулина (единиц)" class="w-full p-3 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-gray-50 dark:placeholder-gray-400">
+                    <textarea id="newMealNotes" placeholder="Заметки (необязательно)" class="w-full p-3 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-gray-50 dark:placeholder-gray-400" rows="2"></textarea>
+                    <div class="flex space-x-3">
+                        <button type="submit" id="addMealSubmitBtn" class="flex-1 bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 transition-colors">Добавить прием пищи</button>
+                        <button type="button" id="cancelAddMealBtn" class="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 dark:bg-slate-600 dark:text-gray-200 dark:hover:bg-slate-500 transition-colors">Отмена</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Модальное окно добавления измерения глюкозы -->
+        <div id="addGlucoseModal" class="modal fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 items-center justify-center p-4 z-50">
+            <div class="bg-white rounded-xl p-6 w-full max-w-md dark:bg-slate-800">
+                <h3 class="text-lg font-semibold mb-4 dark:text-gray-100">Добавить измерение глюкозы</h3>
+                <form id="addGlucoseForm" class="space-y-4">
+                    <input type="time" id="newGlucoseTime" class="w-full p-3 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-gray-50 dark:[color-scheme:dark]" required>
+                    <input type="number" id="newGlucoseLevel" step="0.1" placeholder="Уровень глюкозы (ммоль/л)" class="w-full p-3 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-gray-50 dark:placeholder-gray-400" required>
+                    <select id="newGlucoseType" class="w-full p-3 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-gray-50">
+                        <option value="before">До еды</option>
+                        <option value="after">После еды</option>
+                        <option value="random">Произвольно</option>
+                    </select>
+                    <textarea id="newGlucoseNotes" placeholder="Заметки (необязательно)" class="w-full p-3 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-gray-50 dark:placeholder-gray-400" rows="2"></textarea>
+                    <div class="flex space-x-3">
+                        <button type="submit" class="flex-1 bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 transition-colors">Добавить измерение</button>
+                        <button type="button" id="cancelAddGlucoseBtn" class="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 dark:bg-slate-600 dark:text-gray-200 dark:hover:bg-slate-500 transition-colors">Отмена</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- STATE ---
+        let currentView = 'calendar';
+        let selectedDate = new Date().toISOString().split('T')[0];
+        let currentTheme = localStorage.getItem('diabetesAppTheme') || 'light';
+        
+        let products = JSON.parse(localStorage.getItem('diabetesAppProducts')) || [
+            { id: 1, name: 'Хлеб белый', carbs: 12, insulinRatio: 1 },
+            { id: 2, name: 'Рис отварной', carbs: 25, insulinRatio: 2 },
+            { id: 3, name: 'Картофель', carbs: 16, insulinRatio: 1.5 },
+            { id: 4, name: 'Яблоко среднее', carbs: 15, insulinRatio: 1 },
+            { id: 5, name: 'Молоко', carbs: 5, insulinRatio: 0.5 }
+        ];
+        let meals = JSON.parse(localStorage.getItem('diabetesAppMeals')) || {};
+        let glucoseRecords = JSON.parse(localStorage.getItem('diabetesAppGlucoseRecords')) || {};
+
+        let editingProductId = null; // For editing products
+        let newMealFormState = { // For "Add Meal" modal
+            products: []
+        };
+
+        // Chart instances
+        let dayGlucoseChartInstance, weekGlucoseChartInstance, carbsInsulinChartInstance, activityChartInstance;
+
+        const monthNames = [
+            'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+            'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+        ];
+
+        // --- DOM Elements ---
+        const navigationButtons = document.getElementById('navigation-buttons');
+        const calendarViewEl = document.getElementById('calendarView');
+        const analyticsViewEl = document.getElementById('analyticsView');
+        const reportsViewEl = document.getElementById('reportsView');
+        const productsViewEl = document.getElementById('productsView');
+        const viewContents = document.querySelectorAll('.view-content');
+
+        const calendarHeaderEl = document.getElementById('calendarHeader');
+        const calendarGridEl = document.getElementById('calendarGrid');
+        const mealsHeaderEl = document.getElementById('mealsHeader');
+        const dayMealsContainerEl = document.getElementById('dayMealsContainer');
+        const glucoseHeaderEl = document.getElementById('glucoseHeader');
+        const dayGlucoseContainerEl = document.getElementById('dayGlucoseContainer');
+        const dayGlucoseChartContainerEl = document.getElementById('dayGlucoseChartContainer');
+        
+        const productsTableBodyEl = document.getElementById('productsTableBody');
+        
+        // Modals
+        const addProductModalEl = document.getElementById('addProductModal');
+        const addMealModalEl = document.getElementById('addMealModal');
+        const addGlucoseModalEl = document.getElementById('addGlucoseModal');
+
+        // Theme Toggle
+        const darkModeToggleBtn = document.getElementById('darkModeToggle');
+
+
+        // --- THEME FUNCTIONS ---
+        function applyTheme(theme) {
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark');
+                darkModeToggleBtn.innerHTML = `<i data-lucide="moon" class="w-6 h-6 text-blue-400"></i>`;
+            } else {
+                document.documentElement.classList.remove('dark');
+                darkModeToggleBtn.innerHTML = `<i data-lucide="sun" class="w-6 h-6 text-yellow-500"></i>`;
+            }
+            currentTheme = theme; // Update global state
+            localStorage.setItem('diabetesAppTheme', theme);
+            lucide.createIcons();
+            updateChartColors(theme);
+        }
+
+        function updateChartColors(theme) {
+            const isDark = theme === 'dark';
+            const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+            const textColor = isDark ? '#cbd5e1' : '#4b5563'; // slate-300 vs gray-600 (Tailwind colors)
+
+            Chart.defaults.color = textColor;
+            Chart.defaults.borderColor = gridColor;
+            
+            // Specific chart dataset color updates
+            if (dayGlucoseChartInstance) {
+                const ds = dayGlucoseChartInstance.data.datasets[0];
+                ds.borderColor = isDark ? '#f87171' : '#ef4444'; // red-400 vs red-500
+                ds.pointBackgroundColor = isDark ? '#f87171' : '#ef4444';
+                dayGlucoseChartInstance.update('none'); // 'none' for no animation
+            }
+            if (weekGlucoseChartInstance) {
+                const ds = weekGlucoseChartInstance.data.datasets[0];
+                ds.borderColor = isDark ? '#f87171' : '#ef4444';
+                ds.backgroundColor = isDark ? 'rgba(248, 113, 113, 0.3)' : '#fecaca'; // red-400 with alpha vs red-200
+                weekGlucoseChartInstance.update('none');
+            }
+            if (carbsInsulinChartInstance) {
+                carbsInsulinChartInstance.data.datasets[0].backgroundColor = isDark ? '#60a5fa' : '#3b82f6'; // blue-400 vs blue-500
+                carbsInsulinChartInstance.data.datasets[1].backgroundColor = isDark ? '#34d399' : '#10b981'; // green-400 vs green-500
+                carbsInsulinChartInstance.update('none');
+            }
+            if (activityChartInstance) {
+                activityChartInstance.data.datasets[0].backgroundColor = isDark ? '#fbbf24' : '#f59e0b'; // amber-400 vs amber-500
+                activityChartInstance.data.datasets[1].backgroundColor = isDark ? '#f87171' : '#ef4444'; // red-400 vs red-500
+                activityChartInstance.update('none');
+            }
+        }
+
+        function toggleTheme() {
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            applyTheme(newTheme);
+        }
+
+
+        // --- UTILITY FUNCTIONS ---
+        function saveData() {
+            localStorage.setItem('diabetesAppProducts', JSON.stringify(products));
+            localStorage.setItem('diabetesAppMeals', JSON.stringify(meals));
+            localStorage.setItem('diabetesAppGlucoseRecords', JSON.stringify(glucoseRecords));
+        }
+
+        function getDayMeals(date) {
+            return meals[date] || [];
+        }
+
+        function getDayGlucose(date) {
+            return glucoseRecords[date] || [];
+        }
+        
+        function calculateMealStats(mealProducts) {
+            let totalCarbs = 0;
+            let totalInsulin = 0;
+
+            mealProducts.forEach(item => {
+                const productDetails = products.find(p => p.id === item.id);
+                if (!productDetails) return;
+
+                const carbsPer100g = productDetails.carbs;
+                const actualCarbs = (carbsPer100g * item.amount) / 100;
+                const breadUnits = actualCarbs / 12;
+                
+                totalCarbs += actualCarbs;
+                totalInsulin += breadUnits * productDetails.insulinRatio;
+            });
+
+            return {
+                carbs: totalCarbs.toFixed(1),
+                breadUnits: (totalCarbs / 12).toFixed(1),
+                insulin: totalInsulin.toFixed(1)
+            };
+        }
+
+        function getGlucoseColor(glucose) { // Relies on global currentTheme
+            const isDark = currentTheme === 'dark';
+            if (glucose < 4) return isDark ? 'text-blue-400' : 'text-blue-600';
+            if (glucose <= 7) return isDark ? 'text-green-400' : 'text-green-600';
+            if (glucose <= 10) return isDark ? 'text-yellow-400' : 'text-yellow-500'; // yellow-500 might be better on light
+            return isDark ? 'text-red-400' : 'text-red-600';
+        }
+
+        function getGlucoseTypeLabel(type) {
+            switch (type) {
+                case 'before': return 'До еды';
+                case 'after': return 'После еды';
+                case 'random': return 'Произвольно';
+                default: return type;
+            }
+        }
+        
+        function formatDate(dateString) {
+            return new Date(dateString).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        }
+
+        // --- RENDER FUNCTIONS ---
+
+        function renderNavigation() {
+            document.querySelectorAll('.nav-button').forEach(button => {
+                const isActive = button.dataset.view === currentView;
+                // Remove all theme-related and state-related classes first
+                button.classList.remove(
+                    'bg-blue-500', 'text-white', 'dark:bg-blue-600',
+                    'bg-gray-100', 'text-gray-700', 'hover:bg-gray-200',
+                    'dark:bg-slate-700', 'dark:text-gray-300', 'dark:hover:bg-slate-600'
+                );
+                if (isActive) {
+                    button.classList.add('bg-blue-500', 'text-white', 'dark:bg-blue-600');
+                } else {
+                    button.classList.add(
+                        'bg-gray-100', 'text-gray-700', 'hover:bg-gray-200',
+                        'dark:bg-slate-700', 'dark:text-gray-300', 'dark:hover:bg-slate-600'
+                    );
+                }
+            });
+        }
+
+        function renderView() {
+            viewContents.forEach(view => view.style.display = 'none');
+            const currentViewEl = document.getElementById(`${currentView}View`);
+            if (currentViewEl) {
+                 currentViewEl.style.display = (currentView === 'calendar' || currentView === 'analytics') ? 'grid' : 'block';
+            }
+
+            renderNavigation();
+
+            switch (currentView) {
+                case 'calendar':
+                    renderCalendarView();
+                    break;
+                case 'analytics':
+                    renderAnalyticsView();
+                    break;
+                case 'reports':
+                    renderReportsView();
+                    break;
+                case 'products':
+                    renderProductsView();
+                    break;
+            }
+            lucide.createIcons();
+        }
+
+        function generateCalendarDays() {
+            const today = new Date(); 
+            const currentMonth = today.getMonth();
+            const currentYear = today.getFullYear();
+            const firstDay = new Date(currentYear, currentMonth, 1);
+            const lastDay = new Date(currentYear, currentMonth + 1, 0);
+            const daysInMonth = lastDay.getDate();
+            const startDay = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1; 
+
+            const days = [];
+            for (let i = 0; i < startDay; i++) days.push(null);
+            for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(currentYear, currentMonth, day);
+                days.push({ date: date.toISOString().split('T')[0], day });
+            }
+            return days;
+        }
+
+        function renderCalendarGrid() {
+            const today = new Date();
+            calendarHeaderEl.textContent = `${monthNames[today.getMonth()]} ${today.getFullYear()}`;
+            
+            const dayNamesContainer = calendarGridEl.previousElementSibling;
+            if (dayNamesContainer.children.length === 0) {
+                 ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].forEach(day => {
+                    const div = document.createElement('div');
+                    div.className = "text-center text-sm font-medium text-gray-500 dark:text-gray-400 p-2";
+                    div.textContent = day;
+                    dayNamesContainer.appendChild(div);
+                });
+            }
+
+            calendarGridEl.innerHTML = '';
+            const days = generateCalendarDays();
+            days.forEach(dayObj => {
+                const dayDiv = document.createElement('div');
+                dayDiv.className = "aspect-square";
+                if (dayObj) {
+                    const button = document.createElement('button');
+                    let baseClasses = `w-full h-full rounded-lg flex flex-col items-center justify-center text-sm transition-colors`;
+                    
+                    let stateClasses = 'hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-slate-700'; // Default for empty day
+                    if (selectedDate === dayObj.date) {
+                        stateClasses = 'bg-blue-500 text-white dark:bg-blue-600 dark:text-white';
+                    } else if ((meals[dayObj.date]?.length > 0 || glucoseRecords[dayObj.date]?.length > 0)) {
+                        stateClasses = 'bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-800/80 dark:text-green-300 dark:hover:bg-green-700/80';
+                    }
+                    button.className = `${baseClasses} ${stateClasses}`;
+                    
+                    button.innerHTML = `
+                        <span>${dayObj.day}</span>
+                        <div class="flex gap-1 mt-1">
+                            ${meals[dayObj.date]?.length > 0 ? '<div class="w-1.5 h-1.5 bg-orange-500 rounded-full"></div>' : ''}
+                            ${glucoseRecords[dayObj.date]?.length > 0 ? '<div class="w-1.5 h-1.5 bg-red-500 rounded-full"></div>' : ''}
+                        </div>
+                    `;
+                    button.onclick = () => {
+                        selectedDate = dayObj.date;
+                        renderCalendarView(); 
+                    };
+                    dayDiv.appendChild(button);
+                }
+                calendarGridEl.appendChild(dayDiv);
+            });
+        }
+
+        function renderDayMeals() {
+            mealsHeaderEl.textContent = `Питание ${formatDate(selectedDate)}`;
+            dayMealsContainerEl.innerHTML = '';
+            const dayMealsData = getDayMeals(selectedDate);
+
+            if (dayMealsData.length === 0) {
+                dayMealsContainerEl.innerHTML = `
+                    <div class="text-center text-gray-500 dark:text-gray-400 py-8">
+                        <i data-lucide="utensils" class="w-12 h-12 mx-auto mb-2 opacity-50"></i>
+                        <p>Нет записей о питании</p>
+                    </div>`;
+                lucide.createIcons();
+                return;
+            }
+
+            dayMealsData.forEach(meal => {
+                const stats = calculateMealStats(meal.products);
+                const mealEl = document.createElement('div');
+                mealEl.className = "border rounded-lg p-4 dark:border-slate-700";
+                mealEl.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex items-center">
+                            <i data-lucide="utensils" class="w-5 h-5 mr-2 text-blue-500 dark:text-blue-400"></i>
+                            <span class="font-medium dark:text-gray-200">${meal.time}</span>
+                        </div>
+                        <button data-meal-id="${meal.id}" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-500">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                    <div class="space-y-1 mb-3">
+                        ${meal.products.map(p => {
+                            const productInfo = products.find(prod => prod.id === p.id);
+                            return `<div class="text-sm text-gray-600 dark:text-gray-400">${productInfo ? productInfo.name : 'Неизвестный продукт'} - ${p.amount}г</div>`;
+                        }).join('')}
+                    </div>
+                    <div class="bg-gray-50 rounded p-3 text-sm dark:bg-slate-700">
+                        <div class="grid grid-cols-2 gap-4 mb-2">
+                            <div><span class="text-gray-500 dark:text-gray-400">Углеводы:</span><div class="font-semibold dark:text-gray-200">${stats.carbs}г</div></div>
+                            <div><span class="text-gray-500 dark:text-gray-400">ХЕ:</span><div class="font-semibold dark:text-gray-200">${stats.breadUnits}</div></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><span class="text-gray-500 dark:text-gray-400">Расчет инсулина:</span><div class="font-semibold text-blue-600 dark:text-blue-400">${stats.insulin} ед</div></div>
+                            <div><span class="text-gray-500 dark:text-gray-400">Фактически:</span><div class="font-semibold text-green-600 dark:text-green-400">${meal.actualInsulin || 0} ед</div></div>
+                        </div>
+                        ${meal.notes ? `<div class="mt-2 text-xs text-gray-600 dark:text-gray-300"><strong>Заметки:</strong> ${meal.notes}</div>` : ''}
+                    </div>
+                `;
+                mealEl.querySelector('button[data-meal-id]').addEventListener('click', () => deleteMeal(meal.id));
+                dayMealsContainerEl.appendChild(mealEl);
+            });
+            lucide.createIcons();
+        }
+        
+        function renderDayGlucose() {
+            glucoseHeaderEl.textContent = `Глюкоза ${formatDate(selectedDate)}`;
+            dayGlucoseContainerEl.innerHTML = '';
+            const dayGlucoseData = getDayGlucose(selectedDate);
+
+            if (dayGlucoseData.length === 0) {
+                dayGlucoseContainerEl.innerHTML = `
+                    <div class="text-center text-gray-500 dark:text-gray-400 py-8">
+                        <i data-lucide="activity" class="w-12 h-12 mx-auto mb-2 opacity-50"></i>
+                        <p>Нет измерений глюкозы</p>
+                    </div>`;
+                dayGlucoseChartContainerEl.style.display = 'none';
+                if (dayGlucoseChartInstance) dayGlucoseChartInstance.destroy();
+                lucide.createIcons();
+                return;
+            }
+
+            dayGlucoseData.forEach(record => {
+                const recordEl = document.createElement('div');
+                recordEl.className = "border rounded-lg p-3 dark:border-slate-700";
+                recordEl.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex items-center">
+                            <i data-lucide="droplets" class="w-4 h-4 mr-2 text-red-500 dark:text-red-400"></i>
+                            <span class="font-medium dark:text-gray-200">${record.time}</span>
+                            <span class="ml-2 text-xs bg-gray-100 px-2 py-1 rounded dark:bg-slate-600 dark:text-gray-300">${getGlucoseTypeLabel(record.type)}</span>
+                        </div>
+                        <button data-glucose-id="${record.id}" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-500">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                    <div class="text-2xl font-bold ${getGlucoseColor(record.glucose)}">${record.glucose} ммоль/л</div>
+                    ${record.notes ? `<div class="mt-2 text-sm text-gray-600 dark:text-gray-300">${record.notes}</div>` : ''}
+                `;
+                recordEl.querySelector('button[data-glucose-id]').addEventListener('click', () => deleteGlucose(record.id));
+                dayGlucoseContainerEl.appendChild(recordEl);
+            });
+            lucide.createIcons();
+            renderDayGlucoseChart(dayGlucoseData);
+        }
+
+        function renderDayGlucoseChart(dayGlucoseData) {
+            const chartPoints = dayGlucoseData
+                .sort((a, b) => a.time.localeCompare(b.time))
+                .map(record => ({ time: record.time, glucose: record.glucose }));
+
+            if (chartPoints.length === 0) {
+                dayGlucoseChartContainerEl.style.display = 'none';
+                if (dayGlucoseChartInstance) dayGlucoseChartInstance.destroy();
+                return;
+            }
+            dayGlucoseChartContainerEl.style.display = 'block';
+
+            const ctx = document.getElementById('dayGlucoseChartCanvas').getContext('2d');
+            if (dayGlucoseChartInstance) dayGlucoseChartInstance.destroy();
+            
+            const isDark = currentTheme === 'dark';
+            dayGlucoseChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartPoints.map(d => d.time),
+                    datasets: [{
+                        label: 'Глюкоза',
+                        data: chartPoints.map(d => d.glucose),
+                        borderColor: isDark ? '#f87171' : '#ef4444', // red-400 vs red-500
+                        backgroundColor: 'transparent',
+                        tension: 0.1,
+                        pointBackgroundColor: isDark ? '#f87171' : '#ef4444',
+                        pointRadius: 4,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: false, min: 3, max: 15, ticks: { font: { size: 10 }}}, // Colors handled by Chart.defaults
+                        x: { ticks: { font: { size: 10 }}} // Colors handled by Chart.defaults
+                    },
+                    plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } }
+                }
+            });
+        }
+
+        function renderCalendarView() {
+            renderCalendarGrid();
+            renderDayMeals();
+            renderDayGlucose();
+        }
+
+        // --- Products View Functions ---
+        function renderProductsView() {
+            productsTableBodyEl.innerHTML = '';
+            products.forEach(product => {
+                const row = productsTableBodyEl.insertRow();
+                row.className = "dark:border-slate-600"
+                row.innerHTML = `
+                    <td class="border p-3 dark:border-slate-600">${product.name}</td>
+                    <td class="border p-3 dark:border-slate-600">${product.carbs}</td>
+                    <td class="border p-3 dark:border-slate-600">${product.insulinRatio}</td>
+                    <td class="border p-3 dark:border-slate-600">
+                        <div class="flex space-x-2">
+                            <button data-edit-id="${product.id}" class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-500"><i data-lucide="edit" class="w-4 h-4"></i></button>
+                            <button data-delete-id="${product.id}" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        </div>
+                    </td>
+                `;
+                row.querySelector(`button[data-edit-id="${product.id}"]`).addEventListener('click', () => openEditProductModal(product.id));
+                row.querySelector(`button[data-delete-id="${product.id}"]`).addEventListener('click', () => deleteProduct(product.id));
+            });
+            lucide.createIcons();
+        }
+
+        // --- Analytics and Reports Data Helpers ---
+        function getWeekData() {
+            const data = [];
+            const today = new Date();
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                const dateStr = date.toISOString().split('T')[0];
+                
+                const dayMealsData = getDayMeals(dateStr);
+                const dayGlucoseData = getDayGlucose(dateStr);
+                
+                let totalCarbs = 0;
+                let totalInsulin = 0;
+                
+                dayMealsData.forEach(meal => {
+                    const stats = calculateMealStats(meal.products);
+                    totalCarbs += parseFloat(stats.carbs);
+                    totalInsulin += meal.actualInsulin || parseFloat(stats.insulin) || 0;
+                });
+                
+                let avgGlucose = 0;
+                if (dayGlucoseData.length > 0) {
+                    avgGlucose = dayGlucoseData.reduce((sum, record) => sum + record.glucose, 0) / dayGlucoseData.length;
+                }
+                
+                data.push({
+                    date: date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }),
+                    fullDate: dateStr,
+                    carbs: Math.round(totalCarbs),
+                    insulin: Math.round(totalInsulin * 10) / 10,
+                    glucose: avgGlucose > 0 ? Math.round(avgGlucose * 10) / 10 : 0,
+                    mealsCount: dayMealsData.length,
+                    glucoseCount: dayGlucoseData.length
+                });
+            }
+            return data;
+        }
+
+        // --- Analytics View Functions ---
+        function renderAnalyticsView() {
+            const weekData = getWeekData();
+            const isDark = currentTheme === 'dark';
+
+            // Week Glucose Chart
+            const weekGlucoseCtx = document.getElementById('weekGlucoseChartCanvas').getContext('2d');
+            if (weekGlucoseChartInstance) weekGlucoseChartInstance.destroy();
+            weekGlucoseChartInstance = new Chart(weekGlucoseCtx, {
+                type: 'line', 
+                data: {
+                    labels: weekData.map(d => d.date),
+                    datasets: [{
+                        label: 'Средняя глюкоза',
+                        data: weekData.map(d => d.glucose > 0 ? d.glucose : null), 
+                        borderColor: isDark ? '#f87171' : '#ef4444', // red-400 vs red-500
+                        backgroundColor: isDark ? 'rgba(248, 113, 113, 0.3)' : '#fecaca', // red-400 alpha vs red-200
+                        fill: true,
+                        tension: 0.1,
+                        borderWidth: 2
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: false, min: 3, max: 15 } }, plugins: { tooltip: {callbacks: {label: (ctx) => `${ctx.raw} ммоль/л`}} }}
+            });
+
+            // Carbs and Insulin Chart
+            const carbsInsulinCtx = document.getElementById('carbsInsulinChartCanvas').getContext('2d');
+            if (carbsInsulinChartInstance) carbsInsulinChartInstance.destroy();
+            carbsInsulinChartInstance = new Chart(carbsInsulinCtx, {
+                type: 'bar',
+                data: {
+                    labels: weekData.map(d => d.date),
+                    datasets: [
+                        { label: 'Углеводы (г)', data: weekData.map(d => d.carbs), backgroundColor: isDark ? '#60a5fa' : '#3b82f6' }, // blue-400 vs blue-500
+                        { label: 'Инсулин (ед)', data: weekData.map(d => d.insulin), backgroundColor: isDark ? '#34d399' : '#10b981' } // green-400 vs green-500
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+            });
+            
+            // Activity Chart
+            const activityCtx = document.getElementById('activityChartCanvas').getContext('2d');
+            if (activityChartInstance) activityChartInstance.destroy();
+            activityChartInstance = new Chart(activityCtx, {
+                type: 'bar',
+                data: {
+                    labels: weekData.map(d => d.date),
+                    datasets: [
+                        { label: 'Приемы пищи', data: weekData.map(d => d.mealsCount), backgroundColor: isDark ? '#fbbf24' : '#f59e0b' }, // amber-400 vs amber-500
+                        { label: 'Измерения глюкозы', data: weekData.map(d => d.glucoseCount), backgroundColor: isDark ? '#f87171' : '#ef4444' } // red-400 vs red-500
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+            });
+
+            // Week Summary
+            const summaryContainer = document.getElementById('weekSummaryContainer');
+            const totalCarbs = weekData.reduce((sum, day) => sum + day.carbs, 0);
+            const totalInsulin = Math.round(weekData.reduce((sum, day) => sum + day.insulin, 0) * 10) / 10;
+            const validGlucoseDays = weekData.filter(d => d.glucose > 0);
+            const avgGlucoseWeek = validGlucoseDays.length > 0 ? Math.round(validGlucoseDays.reduce((sum, day) => sum + day.glucose, 0) / validGlucoseDays.length * 10) / 10 : 0;
+            const totalMealsWeek = weekData.reduce((sum, day) => sum + day.mealsCount, 0);
+
+            summaryContainer.innerHTML = `
+                <h2 class="text-xl font-semibold mb-4 dark:text-gray-100">Сводка за неделю</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-blue-50 rounded-lg p-4 dark:bg-slate-700">
+                        <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">${totalCarbs}г</div>
+                        <div class="text-sm text-blue-600 dark:text-blue-400">Общие углеводы</div>
+                    </div>
+                    <div class="bg-green-50 rounded-lg p-4 dark:bg-slate-700">
+                        <div class="text-2xl font-bold text-green-600 dark:text-green-400">${totalInsulin} ед</div>
+                        <div class="text-sm text-green-600 dark:text-green-400">Общий инсулин</div>
+                    </div>
+                    <div class="bg-red-50 rounded-lg p-4 dark:bg-slate-700">
+                        <div class="text-2xl font-bold text-red-600 dark:text-red-400">${avgGlucoseWeek || 0}</div>
+                        <div class="text-sm text-red-600 dark:text-red-400">Средняя глюкоза</div>
+                    </div>
+                    <div class="bg-yellow-50 rounded-lg p-4 dark:bg-slate-700">
+                        <div class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">${totalMealsWeek}</div>
+                        <div class="text-sm text-yellow-600 dark:text-yellow-400">Всего приемов пищи</div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // --- Reports View Functions ---
+        function renderReportsView() {
+            const weekData = getWeekData();
+            const reportTableBody = document.getElementById('weekReportTableBody');
+            reportTableBody.innerHTML = '';
+            weekData.forEach(day => {
+                const row = reportTableBody.insertRow();
+                row.className = "dark:border-slate-600"
+                row.innerHTML = `
+                    <td class="border p-3 dark:border-slate-600">${day.date}</td>
+                    <td class="border p-3 dark:border-slate-600">${day.mealsCount}</td>
+                    <td class="border p-3 dark:border-slate-600">${day.carbs}г</td>
+                    <td class="border p-3 dark:border-slate-600">${day.insulin} ед</td>
+                    <td class="border p-3 dark:border-slate-600 ${getGlucoseColor(day.glucose)}">${day.glucose > 0 ? `${day.glucose} ммоль/л` : '-'}</td>
+                    <td class="border p-3 dark:border-slate-600">${day.glucoseCount}</td>
+                `;
+            });
+
+            // Glucose Control Analysis
+            const analysisContainer = document.getElementById('glucoseControlAnalysisContainer');
+            const allGlucose = weekData.filter(d => d.glucose > 0).map(d => d.glucose);
+            const inRange = allGlucose.filter(g => g >= 4 && g <= 7).length;
+            const totalMeasurements = allGlucose.length;
+            const percentageInRange = totalMeasurements > 0 ? Math.round((inRange / totalMeasurements) * 100) : 0;
+            analysisContainer.innerHTML = `
+                <h3 class="text-lg font-semibold mb-4 dark:text-gray-100">Анализ контроля глюкозы</h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between dark:text-gray-300">
+                        <span>В целевом диапазоне (4-7 ммоль/л):</span>
+                        <span class="font-semibold">${percentageInRange}%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2 dark:bg-slate-600">
+                        <div class="bg-green-500 h-2 rounded-full dark:bg-green-600" style="width: ${percentageInRange}%"></div>
+                    </div>
+                    <div class="text-sm text-gray-600 dark:text-gray-400">${inRange} из ${totalMeasurements} измерений в норме</div>
+                </div>
+            `;
+
+            // Recommendations
+            const recContainer = document.getElementById('recommendationsContainer');
+            recContainer.innerHTML = `<h3 class="text-lg font-semibold mb-4 dark:text-gray-100">Рекомендации</h3><div class="space-y-2 text-sm"></div>`;
+            const recListEl = recContainer.querySelector('.space-y-2');
+            
+            const validGlucoseDaysRec = weekData.filter(d => d.glucose > 0);
+            const avgGlucoseRec = validGlucoseDaysRec.length > 0 ? validGlucoseDaysRec.reduce((sum, d) => sum + d.glucose, 0) / validGlucoseDaysRec.length : 0;
+            const avgCarbsRec = weekData.reduce((sum, d) => sum + d.carbs, 0) / (weekData.length || 1);
+            
+            const recommendations = [];
+            if (avgGlucoseRec > 8) recommendations.push("⚠️ Средний уровень глюкозы повышен. Проконсультируйтесь с врачом.");
+            if (avgCarbsRec > 200) recommendations.push("📊 Высокое потребление углеводов. Рассмотрите снижение порций.");
+            if (weekData.some(d => d.mealsCount < 3 && d.mealsCount > 0)) recommendations.push("🍽️ Некоторые дни с малым количеством приемов пищи. Старайтесь питаться регулярно.");
+            if (recommendations.length === 0) recommendations.push("✅ Хороший контроль! Продолжайте в том же духе.");
+            
+            recommendations.forEach(rec => {
+                const div = document.createElement('div');
+                div.className = "p-2 bg-gray-50 rounded dark:bg-slate-700 dark:text-gray-300";
+                div.textContent = rec;
+                recListEl.appendChild(div);
+            });
+        }
+
+        // --- MODAL HANDLING ---
+        function openModal(modalElement) { modalElement.classList.add('show'); }
+        function closeModal(modalElement) { modalElement.classList.remove('show'); }
+
+        // Add Product Modal
+        document.getElementById('showAddProductModalBtn').addEventListener('click', () => {
+            editingProductId = null;
+            document.getElementById('addProductModalTitle').textContent = 'Добавить продукт';
+            document.getElementById('addProductSubmitBtn').textContent = 'Добавить';
+            document.getElementById('addProductForm').reset();
+            openModal(addProductModalEl);
+        });
+        document.getElementById('cancelAddProductBtn').addEventListener('click', () => closeModal(addProductModalEl));
+        document.getElementById('addProductForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('newProductName').value;
+            const carbs = parseFloat(document.getElementById('newProductCarbs').value);
+            const insulinRatio = parseFloat(document.getElementById('newProductInsulinRatio').value);
+
+            if (name && !isNaN(carbs) && !isNaN(insulinRatio)) {
+                if (editingProductId) {
+                    products = products.map(p => p.id === editingProductId ? { id: editingProductId, name, carbs, insulinRatio } : p);
+                } else {
+                    products.push({ id: Date.now(), name, carbs, insulinRatio });
+                }
+                saveData();
+                if (currentView === 'products') renderProductsView();
+                lucide.createIcons(); // In case any icons are in the products view or affected by data change.
+                closeModal(addProductModalEl);
+            } else {
+                alert('Пожалуйста, заполните все поля корректно.');
+            }
+        });
+
+        function openEditProductModal(id) {
+            const product = products.find(p => p.id === id);
+            if (product) {
+                editingProductId = id;
+                document.getElementById('addProductModalTitle').textContent = 'Редактировать продукт';
+                document.getElementById('addProductSubmitBtn').textContent = 'Сохранить';
+                document.getElementById('editingProductId').value = product.id;
+                document.getElementById('newProductName').value = product.name;
+                document.getElementById('newProductCarbs').value = product.carbs;
+                document.getElementById('newProductInsulinRatio').value = product.insulinRatio;
+                openModal(addProductModalEl);
+            }
+        }
+        
+        function deleteProduct(id) {
+            if (confirm('Вы уверены, что хотите удалить этот продукт?')) {
+                products = products.filter(p => p.id !== id);
+                saveData();
+                if (currentView === 'products') renderProductsView();
+                // If product is deleted, meal calculations might change. Consider full re-render if on calendar or analytics.
+                // For simplicity, just re-render product view. Other views will update on next navigation.
+                lucide.createIcons();
+            }
+        }
+
+        // Add Meal Modal
+        document.getElementById('showAddMealModalBtn').addEventListener('click', () => {
+            newMealFormState.products = [];
+            document.getElementById('addMealForm').reset();
+            renderNewMealProductOptions();
+            renderNewMealProductsList(); 
+            openModal(addMealModalEl);
+        });
+        document.getElementById('cancelAddMealBtn').addEventListener('click', () => closeModal(addMealModalEl));
+        
+        function renderNewMealProductOptions() {
+            const selectEl = document.getElementById('newMealSelectedProduct');
+            selectEl.innerHTML = '<option value="">Выберите продукт</option>';
+            products.forEach(p => {
+                const option = document.createElement('option');
+                option.value = p.id;
+                option.textContent = p.name;
+                selectEl.appendChild(option);
+            });
+        }
+
+        function renderNewMealProductsList() {
+            const listContainer = document.getElementById('newMealProductsList');
+            const listContainerWrapper = document.getElementById('newMealProductsListContainer');
+            const calculationEl = document.getElementById('newMealCalculation');
+            listContainer.innerHTML = '';
+
+            if (newMealFormState.products.length === 0) {
+                listContainerWrapper.style.display = 'none';
+                calculationEl.style.display = 'none';
+                return;
+            }
+            listContainerWrapper.style.display = 'block';
+
+            newMealFormState.products.forEach((item, index) => {
+                const productDetails = products.find(p => p.id === item.id);
+                const itemEl = document.createElement('div');
+                itemEl.className = "flex justify-between items-center bg-gray-50 p-2 rounded dark:bg-slate-700 dark:text-gray-300";
+                itemEl.innerHTML = `
+                    <span>${productDetails ? productDetails.name : 'Неизвестный'} - ${item.amount}г</span>
+                    <button type="button" data-remove-idx="${index}" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-500">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                `;
+                itemEl.querySelector('button').addEventListener('click', () => {
+                    newMealFormState.products.splice(index, 1);
+                    renderNewMealProductsList();
+                });
+                listContainer.appendChild(itemEl);
+            });
+            lucide.createIcons();
+            
+            const stats = calculateMealStats(newMealFormState.products);
+            calculationEl.innerHTML = `
+                <i data-lucide="calculator" class="w-4 h-4 inline mr-2"></i>
+                <strong>Расчет:</strong> ${stats.carbs}г углеводов, ${stats.breadUnits} ХЕ, ${stats.insulin} ед инсулина
+            `;
+            calculationEl.style.display = 'block';
+            lucide.createIcons();
+        }
+
+        document.getElementById('addProductToMealBtn').addEventListener('click', () => {
+            const productId = parseInt(document.getElementById('newMealSelectedProduct').value);
+            const amount = parseFloat(document.getElementById('newMealProductAmount').value);
+
+            if (!productId) { alert('Пожалуйста, выберите продукт'); return; }
+            if (isNaN(amount) || amount <= 0) { alert('Пожалуйста, укажите корректный вес продукта'); return; }
+            
+            const product = products.find(p => p.id === productId);
+            if (!product) { alert('Продукт не найден'); return; }
+
+            newMealFormState.products.push({ id: product.id, amount });
+            renderNewMealProductsList();
+            document.getElementById('newMealSelectedProduct').value = '';
+            document.getElementById('newMealProductAmount').value = '';
+        });
+
+        document.getElementById('addMealForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const time = document.getElementById('newMealTime').value;
+            const actualInsulin = parseFloat(document.getElementById('newMealActualInsulin').value) || 0;
+            const notes = document.getElementById('newMealNotes').value;
+
+            if (!time) { alert('Пожалуйста, укажите время приема пищи'); return; }
+            if (newMealFormState.products.length === 0) { alert('Пожалуйста, добавьте хотя бы один продукт'); return; }
+
+            const dayMealsData = getDayMeals(selectedDate);
+            const newMealEntry = {
+                id: Date.now(),
+                time,
+                products: [...newMealFormState.products], 
+                actualInsulin,
+                notes
+            };
+            
+            meals[selectedDate] = [...dayMealsData, newMealEntry].sort((a, b) => a.time.localeCompare(b.time));
+            saveData();
+            if (currentView === 'calendar') renderCalendarView(); 
+            else if (currentView === 'analytics' || currentView === 'reports') renderView(); // Re-render if on analytics/reports
+            lucide.createIcons();
+            closeModal(addMealModalEl);
+        });
+
+        function deleteMeal(mealId) {
+             if (confirm('Вы уверены, что хотите удалить этот прием пищи?')) {
+                const dayMealsData = getDayMeals(selectedDate);
+                meals[selectedDate] = dayMealsData.filter(m => m.id !== mealId);
+                if (meals[selectedDate].length === 0) delete meals[selectedDate];
+                saveData();
+                if (currentView === 'calendar') renderCalendarView();
+                else if (currentView === 'analytics' || currentView === 'reports') renderView();
+                lucide.createIcons();
+            }
+        }
+
+        // Add Glucose Modal
+        document.getElementById('showAddGlucoseModalBtn').addEventListener('click', () => {
+            document.getElementById('addGlucoseForm').reset();
+            openModal(addGlucoseModalEl);
+        });
+        document.getElementById('cancelAddGlucoseBtn').addEventListener('click', () => closeModal(addGlucoseModalEl));
+        document.getElementById('addGlucoseForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const time = document.getElementById('newGlucoseTime').value;
+            const glucoseLevel = parseFloat(document.getElementById('newGlucoseLevel').value);
+            const type = document.getElementById('newGlucoseType').value;
+            const notes = document.getElementById('newGlucoseNotes').value;
+
+            if (time && !isNaN(glucoseLevel)) {
+                const dayGlucoseData = getDayGlucose(selectedDate);
+                glucoseRecords[selectedDate] = [
+                    ...dayGlucoseData, 
+                    { id: Date.now(), time, glucose: glucoseLevel, type, notes }
+                ].sort((a, b) => a.time.localeCompare(b.time));
+                saveData();
+                if (currentView === 'calendar') renderCalendarView();
+                else if (currentView === 'analytics' || currentView === 'reports') renderView();
+                lucide.createIcons();
+                closeModal(addGlucoseModalEl);
+            } else {
+                alert('Пожалуйста, укажите время и уровень глюкозы.');
+            }
+        });
+
+        function deleteGlucose(recordId) {
+            if (confirm('Вы уверены, что хотите удалить это измерение глюкозы?')) {
+                const dayGlucoseData = getDayGlucose(selectedDate);
+                glucoseRecords[selectedDate] = dayGlucoseData.filter(r => r.id !== recordId);
+                if (glucoseRecords[selectedDate].length === 0) delete glucoseRecords[selectedDate];
+                saveData();
+                if (currentView === 'calendar') renderCalendarView();
+                else if (currentView === 'analytics' || currentView === 'reports') renderView();
+                lucide.createIcons();
+            }
+        }
+        
+        // --- EVENT LISTENERS ---
+        navigationButtons.addEventListener('click', (e) => {
+            const button = e.target.closest('.nav-button');
+            if (button && button.dataset.view) {
+                currentView = button.dataset.view;
+                renderView();
+            }
+        });
+
+        darkModeToggleBtn.addEventListener('click', toggleTheme);
+
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            applyTheme(currentTheme); // Apply theme before first render
+            renderView(); 
+            // lucide.createIcons(); // renderView already calls this
+        });
+
+    </script>
+</body>
+</html>
+--- END OF FILE index.html ---
