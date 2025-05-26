@@ -1,5 +1,3 @@
---- START OF FILE index.html ---
-
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -10,7 +8,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* Custom styles if needed, e.g., for modal transitions or specific overrides */
+        /* Custom styles for Diary App */
         .modal {
             display: none; /* Hidden by default */
         }
@@ -23,6 +21,181 @@
             height: 250px; /* Adjust as needed */
             width: 100%;
         }
+
+        /* Styles for Integrated Calculator */
+        #calculatorHost {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            
+            color: #ebebeb; /* Default text color for calculator view */
+        }
+
+        #calculatorHost h1, #calculatorHost h2, #calculatorHost h3 { color: #0062cc; text-align: center; }
+        #calculatorHost h1 { font-size: 1.8em; margin-bottom: 20px;}
+        #calculatorHost h2 { margin-top: 30px; color: #117a8b; font-size: 1.5em; margin-bottom: 15px;}        
+        #calculatorHost label {
+            display: flex; align-items: center; 
+            margin-top: 18px; margin-bottom: 6px; font-weight: 600; color: #9f9f9f;
+        }
+        #calculatorHost input[type="number"], #calculatorHost select {
+            width: 100%; /* Занимает всю доступную ширину родителя */
+            padding: 12px; margin-top: 6px;
+            border: 1px solid #ced4da; border-radius: 6px; box-sizing: border-box; font-size: 1em;
+            color: #333; /* Ensure text is visible on light inputs */
+        }
+        #calculatorHost input[type="number"]:focus, #calculatorHost select:focus {
+            border-color: #7abaff; outline: 0; box-shadow: 0 0 0 0.25rem rgba(0, 102, 204, 0.25);
+        }
+        #calculatorHost button { /* General button style for calculator */
+            background-color: #0062cc; color: white; padding: 14px 20px;
+            border: none; border-radius: 6px; cursor: pointer;
+            font-size: 1.1em; transition: background-color 0.2s ease-in-out, transform 0.1s ease;
+            box-sizing: border-box;
+        }
+        #calculatorHost button:hover { background-color: #004c9e; transform: translateY(-1px); }
+        #calculatorHost button:active { transform: translateY(0px); }
+        #calculatorHost button.save-settings { background-color: #20c997; }
+        #calculatorHost button.save-settings:hover { background-color: #18a277; }
+
+        .result-section {
+            margin-top: 35px; padding: 25px; background-color: #eef3f7;
+            border-radius: 8px; border: 1px solid #d1d9e0;
+        }
+        .result-section p { margin: 12px 0; font-size: 1.05em; }
+        .result-section strong { color: #0062cc; }
+        #predictedSugarResult { font-size: 1.5em !important; font-weight: bold;}
+
+        .disclaimer-bottom {
+            margin-top: 25px; padding: 20px; background-color: #ffeeba;
+            color: #725c0d; border: 1px solid #fddc9d; border-radius: 8px; text-align: justify;
+        }
+        .error-message { color: #c82333; font-size: 0.9em; margin-top: 6px; }
+        .info-tooltip-icon {
+            display: inline-flex; 
+            justify-content: center;
+            align-items: center;
+            width: 22px; height: 22px; 
+            border-radius: 50%;
+            background-color: #007bff;
+            color: white;
+            text-align: center;
+            font-weight: bold;
+            margin-left: 8px;
+            cursor: pointer;
+            user-select: none; 
+            font-size: 0.85em; 
+            flex-shrink: 0; 
+        }
+        .info-tooltip-icon:hover { background-color: #0056b3; }
+        
+        .popup-overlay { /* For calculator's popup */
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.65); 
+            display: none; justify-content: center; align-items: center;
+            z-index: 1000; padding: 15px; box-sizing: border-box;
+        }
+        .popup-content { /* For calculator's popup */
+            background-color: white; padding: 20px; 
+            border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            max-width: 500px; width: 95%; 
+            text-align: left; position: relative; 
+            max-height: 85vh; 
+            overflow-y: auto; 
+            box-sizing: border-box;
+        }
+        .popup-content h4 {
+            margin-top: 0; color: #0062cc; font-size: 1.2em; 
+            margin-bottom: 15px;
+        }
+        .popup-content p, .popup-content ul {
+            font-size: 0.95em; 
+            line-height: 1.6; color: #333; margin-bottom: 10px;
+        }
+        .popup-content ul { padding-left: 20px; }
+        .popup-close-btn {
+            position: absolute; top: 8px; right: 12px; 
+            font-size: 2em; 
+            font-weight: bold; color: #aaa; cursor: pointer;
+            background: none; border: none; padding: 5px; line-height: 1;
+        }
+        .popup-close-btn:hover { color: #333; }
+
+        .settings-section { border: 1px solid #20c997; padding: 25px; border-radius: 8px; margin-bottom: 35px;}
+        .calc-coeffs-display { padding:10px; border-radius: 5px; margin-bottom:15px; font-size:0.9em;}
+        .calc-coeffs-display strong { display: block; margin-bottom: 5px; }
+        .calc-coeffs-display label {
+            display: inline-block; 
+            margin-right: 10px;
+            margin-top: 5px;
+        }
+        .calc-coeffs-display input { 
+            width: 65px !important; 
+            padding: 6px !important; margin-left:3px; 
+            text-align: center; font-size: 0.95em;
+            
+        }
+
+        /* --- Calculator Adaptive styles --- */
+        @media (max-width: 768px) {
+            #calculatorHost { padding: 15px; }
+            #calculatorHost .container { padding: 20px; margin-bottom: 20px; }
+            .top-disclaimer { padding: 15px; font-size: 1em; }
+            .top-disclaimer strong { font-size: 1.1em; }
+
+            #calculatorHost h1 { font-size: 1.6em; }
+            #calculatorHost h2 { font-size: 1.3em; }
+            #calculatorHost h3 { font-size: 1.15em; }
+
+            #calculatorHost input[type="number"], #calculatorHost select { padding: 10px; font-size: 0.95em; }
+            #calculatorHost button { padding: 12px 18px; font-size: 1em; }
+            .result-section { padding: 20px; }
+            .result-section p { font-size: 1em; }
+            #predictedSugarResult { font-size: 1.3em !important; }
+            .settings-section, .result-section { padding: 20px; }
+            .disclaimer-bottom { padding: 15px; font-size: 0.9em; }
+            .popup-content { padding: 20px; } /* Calculator popup */
+            .popup-content h4 { font-size: 1.1em; }
+            .popup-content p, .popup-content ul { font-size: 0.9em; }
+        }
+
+        @media (max-width: 480px) {
+            #calculatorHost { padding: 10px; }
+            #calculatorHost .container { padding: 15px; }
+            .top-disclaimer { padding: 10px; font-size: 0.9em; margin-bottom: 15px; }
+            .top-disclaimer strong { font-size: 1em; }
+            
+            #calculatorHost h1 { font-size: 1.4em; margin-bottom: 15px; }
+            #calculatorHost h2 { font-size: 1.2em; margin-top: 20px; margin-bottom: 10px; }
+            #calculatorHost h3 { font-size: 1.1em; margin-top: 20px; margin-bottom: 8px; }
+
+            #calculatorHost label { margin-top: 15px; font-size: 0.95em; }
+            #calculatorHost input[type="number"], #calculatorHost select { padding: 10px; font-size: 0.9em; }
+            #calculatorHost button { padding: 12px 15px; font-size: 1em; margin-top: 20px;}
+            
+            .result-section p { font-size: 0.95em; }
+            #predictedSugarResult { font-size: 1.2em !important; }
+            
+            .settings-section, .result-section { padding: 15px; }
+            .disclaimer-bottom { padding: 10px; font-size: 0.85em; }
+
+            .info-tooltip-icon { width: 20px; height: 20px; line-height: 20px; font-size: 0.75em; }
+            
+            .popup-content { width: 95%; padding: 15px; } /* Calculator popup */
+            .popup-content h4 { font-size: 1.05em; }
+            .popup-content p, .popup-content ul { font-size: 0.85em; }
+            .popup-close-btn { top: 5px; right: 8px; font-size: 1.8em; }
+
+            .calc-coeffs-display strong { font-size: 0.95em; }
+            .calc-coeffs-display label { font-size: 0.9em; margin-right: 5px; }
+            .calc-coeffs-display input { width: 60px !important; font-size: 0.9em;}
+        }
+        /* --- END OF COPIED CALCULATOR STYLES --- */
+
     </style>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-900 dark:to-slate-800 transition-colors duration-300">
@@ -41,23 +214,33 @@
         </div>
 
         <!-- Навигация -->
-        <div class="bg-white rounded-xl shadow-lg p-4 mb-6 dark:bg-slate-800">
-            <div id="navigation-buttons" class="flex flex-wrap gap-2">
-                <button data-view="calendar" class="nav-button flex items-center px-4 py-2 rounded-lg transition-colors">
-                    <i data-lucide="calendar" class="w-5 h-5 mr-2"></i> Календарь
+        <div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-800 shadow-lg border-t border-gray-200 dark:border-slate-700 z-50">
+            <div id="navigation-buttons" class="flex justify-around items-center max-w-7xl mx-auto px-2 py-2">
+                <button data-view="calendar" class="nav-button flex flex-col items-center px-3 py-2 rounded-lg transition-colors">
+                    <i data-lucide="calendar" class="w-6 h-6 mb-1"></i>
+                    <span class="text-xs">Календарь</span>
                 </button>
-                <button data-view="analytics" class="nav-button flex items-center px-4 py-2 rounded-lg transition-colors">
-                    <i data-lucide="trending-up" class="w-5 h-5 mr-2"></i> Аналитика
+                <button data-view="analytics" class="nav-button flex flex-col items-center px-3 py-2 rounded-lg transition-colors">
+                    <i data-lucide="trending-up" class="w-6 h-6 mb-1"></i>
+                    <span class="text-xs">Аналитика</span>
                 </button>
-                <button data-view="reports" class="nav-button flex items-center px-4 py-2 rounded-lg transition-colors">
-                    <i data-lucide="bar-chart-3" class="w-5 h-5 mr-2"></i> Отчеты
+                <button data-view="reports" class="nav-button flex flex-col items-center px-3 py-2 rounded-lg transition-colors">
+                    <i data-lucide="bar-chart-3" class="w-6 h-6 mb-1"></i>
+                    <span class="text-xs">Отчеты</span>
                 </button>
-                <button data-view="products" class="nav-button flex items-center px-4 py-2 rounded-lg transition-colors">
-                    <i data-lucide="database" class="w-5 h-5 mr-2"></i> Продукты
+                <button data-view="products" class="nav-button flex flex-col items-center px-3 py-2 rounded-lg transition-colors">
+                    <i data-lucide="database" class="w-6 h-6 mb-1"></i>
+                    <span class="text-xs">Продукты</span>
+                </button>
+                <button data-view="calculator" class="nav-button flex flex-col items-center px-3 py-2 rounded-lg transition-colors">
+                    <i data-lucide="calculator" class="w-6 h-6 mb-1"></i>
+                    <span class="text-xs">Калькулятор</span>
                 </button>
             </div>
         </div>
 
+        <!-- Добавляем отступ снизу для контента -->
+        <div class="pb-20">
         <!-- Календарь View -->
         <div id="calendarView" class="view-content grid grid-cols-1 xl:grid-cols-3 gap-6">
             <!-- Календарная сетка -->
@@ -189,6 +372,98 @@
             </div>
         </div>
 
+        <!-- Калькулятор View -->
+        <div id="calculatorView" class="view-content" style="display: none;">
+            <div id="calculatorHost">
+                <div class="container"> <!-- This is the calculator's .container -->
+                    <h1>Персональный калькулятор сахара (Адаптивный)</h1>
+            
+                    <div class="settings-section">
+                        <h3>Ваши индивидуальные коэффициенты <span class="info-tooltip-icon" onclick="showPopup('settingsInfo')">?</span></h3>
+                        <p class="info-tooltip" style="font-size: 0.85em; color: #5a6268;">Значения должны быть согласованы с вашим врачом.</p>
+                        
+                        <label for="settingCarbRatio">Углеводный коэффициент (УК) <span class="info-tooltip-icon" onclick="showPopup('carbRatioInfo')">?</span></label>
+                        <input type="number" id="settingCarbRatio" step="0.1">
+                        <div class="error-message" id="settingCarbRatioError"></div>
+            
+                        <label for="settingSensitivityFactor">Фактор чувствительности к инсулину (ФЧИ) <span class="info-tooltip-icon" onclick="showPopup('sensitivityFactorInfo')">?</span></label>
+                        <input type="number" id="settingSensitivityFactor" step="0.1">
+                        <div class="error-message" id="settingSensitivityFactorError"></div>
+            
+                        <label for="settingTargetSugar">Целевой уровень сахара <span class="info-tooltip-icon" onclick="showPopup('targetSugarInfo')">?</span></label>
+                        <input type="number" id="settingTargetSugar" step="0.1">
+                        <div class="error-message" id="settingTargetSugarError"></div>
+            
+                        <button type="button" class="save-settings" onclick="saveSettings()">Сохранить мои коэффициенты</button>
+                    </div>
+            
+                    <h2>Расчет прогноза (на ~2 часа после еды):</h2>
+                    <form id="diabetesForm">
+                        <div class="calc-coeffs-display">
+                            <strong>Используемые коэффициенты:</strong><br>
+                            <label for="calcCarbRatio">УК: <input type="number" id="calcCarbRatio" step="0.1" readonly></label>
+                            <label for="calcSensitivityFactor">ФЧИ: <input type="number" id="calcSensitivityFactor" step="0.1" readonly></label>
+                            <label for="calcTargetSugar">Цель: <input type="number" id="calcTargetSugar" step="0.1" readonly></label>
+                        </div>
+            
+                        <label for="currentSugar">1. Текущий уровень сахара (ммоль/л) <span class="info-tooltip-icon" onclick="showPopup('currentSugarInfo')">?</span></label>
+                        <input type="number" id="currentSugar" name="currentSugar" step="0.1" required>
+                        <div class="error-message" id="currentSugarError"></div>
+            
+                        <label for="carbs">2. Количество углеводов в пище (граммы) <span class="info-tooltip-icon" onclick="showPopup('carbsInfo')">?</span></label>
+                        <input type="number" id="carbs" name="carbs" step="1" required>
+                        <div class="error-message" id="carbsError"></div>
+            
+                        <label for="mealType">3. Тип пищи <span class="info-tooltip-icon" onclick="showPopup('mealTypeInfo')">?</span></label>
+                        <select id="mealType" name="mealType">
+                            <option value="balanced" selected>Сбалансированная еда (стандарт)</option>
+                            <option value="fast">Преимущественно быстрые углеводы</option>
+                            <option value="slow">Медленные углеводы / Жирная/белковая пища</option>
+                        </select>
+            
+                        <label for="activityLevel">4. Физическая активность <span class="info-tooltip-icon" onclick="showPopup('activityLevelInfo')">?</span></label>
+                        <select id="activityLevel" name="activityLevel">
+                            <option value="none" selected>Без значительной активности</option>
+                            <option value="light">Легкая (прогулка)</option>
+                            <option value="moderate">Умеренная/Интенсивная</option>
+                        </select>
+                        
+                        <label for="insulinDose">5. Введенная доза инсулина (ед.) <span class="info-tooltip-icon" onclick="showPopup('insulinDoseInfo')">?</span></label>
+                        <input type="number" id="insulinDose" name="insulinDose" step="0.1" required>
+                        <div class="error-message" id="insulinDoseError"></div>
+            
+                        <button type="button" onclick="calculatePrediction()">Рассчитать прогноз</button>
+                    </form>
+            
+                    <div class="result-section" id="predictionArea" style="display:none;">
+                         <h2>Результаты расчета:</h2>
+                        <p>Расчетная доза инсулина на еду (РД<sub>еда</sub>): <strong id="foodDoseResult">--</strong> ед.</p>
+                        <p>Расчетная доза инсулина на коррекцию (РД<sub>корр</sub>): <strong id="correctionDoseResult">--</strong> ед.</p>
+                        <p><strong>Общая расчетная потребность в инсулине (ОРПИ):</strong> <strong id="totalCalculatedDoseResult">--</strong> ед.</p>
+                        <hr>
+                        <p>Вы ввели: <strong id="enteredDoseDisplay">--</strong> ед. инсулина.</p>
+                        <p>Разница (Введенная доза - ОРПИ): <strong id="doseDifferenceResult">--</strong> ед.</p>
+                        <hr>
+                        <p><strong>Приблизительный прогнозируемый уровень сахара через ~2 часа:</strong> <br><strong id="predictedSugarResult">--</strong> ммоль/л</p>
+                        <p id="additionalComments" style="font-style: italic; margin-top:15px;"></p>
+                    </div>
+                     
+                </div>
+            
+                <!-- Popup Overlay and Content for Calculator -->
+                <div class="popup-overlay" id="popupOverlay" onclick="closePopupOnClickOutside(event)">
+                    <div class="popup-content" id="popupContentContainer">
+                        
+                        <h4 id="popupTitle">Заголовок подсказки</h4>
+                        <div id="popupText">Текст подсказки здесь...</div>
+                        <button class="popup-close-btn" onclick="hidePopup()">&times;</button>
+                    </div>
+                    
+                </div>
+            </div>
+        </div>
+
+
         <!-- Модальное окно добавления/редактирования продукта -->
         <div id="addProductModal" class="modal fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 items-center justify-center p-4 z-50">
             <div class="bg-white rounded-xl p-6 w-full max-w-md dark:bg-slate-800">
@@ -268,13 +543,267 @@
     </div>
 
     <script>
+        // --- START OF CALCULATOR JavaScript (copied from code (5).html, window.onload removed) ---
+        const CR_KEY = 'diabetesCalcAdvPop_carbRatio'; 
+        const SF_KEY = 'diabetesCalcAdvPop_sensitivityFactor';
+        const TS_KEY = 'diabetesCalcAdvPop_targetSugar';
+
+        const popupData = {
+            settingsInfo: {
+                title: "Индивидуальные коэффициенты",
+                text: `<p>Эти коэффициенты являются ключевыми для персонализации расчетов. <strong>Они должны быть определены строго совместно с вашим лечащим врачом-эндокринологом.</strong> Неправильно установленные коэффициенты приведут к неверным расчетам и потенциально опасным выводам.</p>
+                       <p>Сохраняются в памяти вашего браузера (localStorage) и будут автоматически загружаться при следующем посещении страницы с этого же устройства и браузера.</p>`
+            },
+            carbRatioInfo: {
+                title: "Углеводный коэффициент (УК)",
+                text: `<p><strong>УК (ед/10г угл.)</strong>: Показывает, сколько единиц короткого/ультракороткого инсулина требуется для усвоения 10 граммов углеводов (примерно 1 Хлебная Единица, ХЕ).</p>
+                       <p>Например, если ваш УК = 1.5, это значит, что на каждые 10 грамм углеводов вам нужно 1.5 единицы инсулина.</p>
+                       <p>Этот коэффициент может меняться в течение дня (например, утром УК часто выше). В данном калькуляторе используется одно значение УК.</p>
+                       <p><strong>Типичные значения:</strong> 0.5 - 3.0 (очень индивидуально).</p>`
+            },
+            sensitivityFactorInfo: {
+                title: "Фактор чувствительности к инсулину (ФЧИ)",
+                text: `<p><strong>ФЧИ (ммоль/л на 1 ед.)</strong>: Показывает, на сколько ммоль/л снизит ваш уровень сахара в крови 1 единица введенного короткого/ультракороткого инсулина.</p>
+                       <p>Например, если ваш ФЧИ = 2.0, это значит, что 1 единица инсулина снизит ваш сахар примерно на 2.0 ммоль/л.</p>
+                       <p>Используется для расчета дозы инсулина на коррекцию высокого сахара. Также может меняться в течение дня или при болезни.</p>
+                       <p><strong>Типичные значения:</strong> 1.0 - 5.0 (очень индивидуально, может быть и выше).</p>`
+            },
+            targetSugarInfo: {
+                title: "Целевой уровень сахара",
+                text: `<p><strong>Целевой уровень сахара (ммоль/л)</strong>: Это тот уровень сахара в крови, к которому вы стремитесь перед едой или к которому должен вернуться сахар через некоторое время после еды и действия инсулина.</p>
+                       <p>Определяется индивидуально с вашим врачом. Может быть диапазон (например, 4.0 - 7.0 ммоль/л). Для расчетов здесь используется одно конкретное значение (например, середина вашего целевого диапазона перед едой).</p>
+                       <p><strong>Типичные значения для цели перед едой:</strong> 4.0 - 7.0 ммоль/л.</p>`
+            },
+            currentSugarInfo: {
+                title: "Текущий уровень сахара",
+                text: `<p>Введите ваш текущий уровень глюкозы в крови, измеренный глюкометром, в ммоль/л.</p>
+                       <p>Это отправная точка для всех расчетов. Точность этого значения критически важна.</p>`
+            },
+            carbsInfo: {
+                title: "Количество углеводов в пище",
+                text: `<p>Укажите общее количество усвояемых углеводов в граммах, которое вы планируете съесть или уже съели.</p>
+                       <p>Для подсчета используйте информацию на упаковках продуктов, таблицы пищевой ценности или специализированные приложения. Точный подсчет углеводов – ключ к правильному расчету дозы инсулина на еду.</p>
+                       <p>Помните, что 1 Хлебная Единица (ХЕ) ≈ 10-12 грамм углеводов.</p>`
+            },
+            mealTypeInfo: {
+                title: "Тип пищи",
+                text: `<p>Выбор типа пищи помогает калькулятору (очень упрощенно) учесть примерную скорость усвоения углеводов и их влияние на сахар в ближайшие ~2 часа.</p>
+                       <ul>
+                           <li><strong>Сбалансированная еда (стандарт):</strong> Обычный прием пищи, содержащий белки, жиры и углеводы.</li>
+                           <li><strong>Преимущественно быстрые углеводы:</strong> Продукты, которые быстро повышают сахар (сок, фрукты, сладости).</li>
+                           <li><strong>Медленные углеводы / Жирная/белковая пища:</strong> Еда, богатая жирами/белками, замедляющими всасывание углеводов.</li>
+                       </ul>
+                       <p>Этот параметр вносит лишь небольшую поправку в прогноз.</p>`
+            },
+            activityLevelInfo: {
+                title: "Физическая активность",
+                text: `<p>Укажите предполагаемый уровень физической активности в ближайшие 1-2 часа.</p>
+                       <p>Физическая активность обычно повышает чувствительность к инсулину и помогает снижать уровень сахара.</p>
+                       <ul>
+                           <li><strong>Без значительной активности:</strong> Сидячий образ жизни.</li>
+                           <li><strong>Легкая (прогулка):</strong> Неспешная ходьба.</li>
+                           <li><strong>Умеренная/Интенсивная:</strong> Быстрая ходьба, спорт.</li>
+                       </ul>
+                       <p>Калькулятор применяет примерный фактор снижения сахара. Эффект индивидуален.</p>`
+            },
+            insulinDoseInfo: {
+                title: "Введенная доза инсулина",
+                text: `<p>Укажите дозу короткого или ультракороткого инсулина (в единицах) для компенсации этой еды и/или коррекции сахара.</p>
+                       <p><strong>ВАЖНО:</strong> Этот калькулятор <strong>НЕ УЧИТЫВАЕТ активный инсулин (IOB)</strong> от предыдущих инъекций. Учет IOB критически важен, но требует более сложных моделей.</p>
+                       <p>Вводите только дозу для ДАННОГО приема пищи/коррекции.</p>`
+            }
+        };
+
+        function showPopup(popupId) { // Calculator's showPopup
+            const data = popupData[popupId];
+            if (data) {
+                document.getElementById('popupTitle').textContent = data.title;
+                document.getElementById('popupText').innerHTML = data.text;
+                document.getElementById('popupOverlay').style.display = 'flex';
+            }
+        }
+
+        function hidePopup() { // Calculator's hidePopup
+            document.getElementById('popupOverlay').style.display = 'none';
+        }
+        
+        function closePopupOnClickOutside(event) { // Calculator's specific logic
+            if (event.target === document.getElementById('popupOverlay')) {
+                hidePopup();
+            }
+        }
+
+        function validateAndGetNumber(valueStr, fieldNameForError, errorElementId) {
+            const numValue = parseFloat(valueStr);
+            const errorElement = document.getElementById(errorElementId);
+            if (errorElement) errorElement.textContent = '';
+
+            if (valueStr === null || valueStr.trim() === '' || isNaN(numValue)) {
+                if (errorElement) errorElement.textContent = `Введите числовое значение для "${fieldNameForError}".`;
+                return null;
+            }
+            if (numValue < 0) {
+                 if (errorElement) errorElement.textContent = `"${fieldNameForError}" не может быть отрицательным.`;
+                return null;
+            }
+            
+            if ((fieldNameForError.includes("УК") || fieldNameForError.includes("Углеводный коэффициент")) && (numValue === 0 || numValue > 10) ) {
+                 if (errorElement) errorElement.textContent = `УК (0.1-10). Не 0.`; return null;
+            }
+            if ((fieldNameForError.includes("ФЧИ") || fieldNameForError.includes("Фактор чувствительности")) && (numValue === 0 || numValue > 25)) { 
+                 if (errorElement) errorElement.textContent = `ФЧИ (0.5-25). Не 0.`; return null;
+            }
+             if ((fieldNameForError.includes("Целевой сахар")) && (numValue < 3 || numValue > 12)) {
+                 if (errorElement) errorElement.textContent = `Цель (3-12 ммоль/л).`; return null;
+            }
+            if (fieldNameForError.includes("Текущий сахар") && (numValue < 1 || numValue > 40)) {
+                 if (errorElement) errorElement.textContent = `Текущий сахар (1-40 ммоль/л).`; return null;
+            }
+             if (fieldNameForError.includes("Углеводы") && (numValue > 500)) { 
+                 if (errorElement) errorElement.textContent = `>500г углеводов. Проверьте.`;
+            }
+            if (fieldNameForError.includes("Доза инсулина") && (numValue > 100)) { 
+                 if (errorElement) errorElement.textContent = `>100ед инсулина. Проверьте.`;
+            }
+            return numValue;
+        }
+
+        function saveSettings() {
+            document.querySelectorAll('#calculatorHost .settings-section .error-message').forEach(el => el.textContent = '');
+            
+            const carbRatio = validateAndGetNumber(document.getElementById('settingCarbRatio').value, "Углеводный коэффициент", "settingCarbRatioError");
+            const sensitivityFactor = validateAndGetNumber(document.getElementById('settingSensitivityFactor').value, "Фактор чувствительности", "settingSensitivityFactorError");
+            const targetSugar = validateAndGetNumber(document.getElementById('settingTargetSugar').value, "Целевой сахар", "settingTargetSugarError");
+
+            if (carbRatio !== null && sensitivityFactor !== null && targetSugar !== null) {
+                localStorage.setItem(CR_KEY, carbRatio.toString());
+                localStorage.setItem(SF_KEY, sensitivityFactor.toString());
+                localStorage.setItem(TS_KEY, targetSugar.toString());
+                alert('Коэффициенты сохранены!');
+                loadSettingsToCalcForm(); 
+            } else {
+                alert('Пожалуйста, исправьте ошибки в значениях коэффициентов.');
+            }
+        }
+
+        function loadSettingsToCalcForm() {
+            const cr = localStorage.getItem(CR_KEY);
+            const sf = localStorage.getItem(SF_KEY);
+            const ts = localStorage.getItem(TS_KEY);
+
+            const crEl = document.getElementById('calcCarbRatio');
+            const sfEl = document.getElementById('calcSensitivityFactor');
+            const tsEl = document.getElementById('calcTargetSugar');
+            const settingCrEl = document.getElementById('settingCarbRatio');
+            const settingSfEl = document.getElementById('settingSensitivityFactor');
+            const settingTsEl = document.getElementById('settingTargetSugar');
+
+            if (cr && crEl && settingCrEl) { crEl.value = parseFloat(cr).toFixed(1); settingCrEl.value = parseFloat(cr).toFixed(1); } else if(crEl && settingCrEl) { crEl.value = ''; settingCrEl.value = '';}
+            if (sf && sfEl && settingSfEl) { sfEl.value = parseFloat(sf).toFixed(1); settingSfEl.value = parseFloat(sf).toFixed(1); } else if(sfEl && settingSfEl) { sfEl.value = ''; settingSfEl.value = '';}
+            if (ts && tsEl && settingTsEl) { tsEl.value = parseFloat(ts).toFixed(1); settingTsEl.value = parseFloat(ts).toFixed(1); } else if(tsEl && settingTsEl) { tsEl.value = ''; settingTsEl.value = '';}
+        }
+        
+        function getCoefficientsForCalculation() {
+            const carbRatioStr = document.getElementById('calcCarbRatio').value;
+            const sensitivityFactorStr = document.getElementById('calcSensitivityFactor').value;
+            const targetSugarStr = document.getElementById('calcTargetSugar').value;
+
+            if (carbRatioStr === '' || sensitivityFactorStr === '' || targetSugarStr === '') {
+                 alert("Пожалуйста, сначала установите и сохраните корректные индивидуальные коэффициенты в разделе настроек.");
+                return null;
+            }
+
+            const carbRatio = validateAndGetNumber(carbRatioStr, "УК", "NoIDNeeded1"); // Error IDs are dummy here as they are not displayed
+            const sensitivityFactor = validateAndGetNumber(sensitivityFactorStr, "ФЧИ", "NoIDNeeded2");
+            const targetSugar = validateAndGetNumber(targetSugarStr, "Целевой сахар", "NoIDNeeded3");
+
+            if (carbRatio === null || sensitivityFactor === null || targetSugar === null) {
+                alert("Сохраненные коэффициенты некорректны. Пожалуйста, проверьте и пересохраните их в разделе настроек.");
+                return null;
+            }
+            return { carbRatio, sensitivityFactor, targetSugar };
+        }
+
+        function calculatePrediction() {
+            document.querySelectorAll('#diabetesForm .error-message').forEach(el => el.textContent = '');
+            
+            const currentSugar = validateAndGetNumber(document.getElementById('currentSugar').value, "Текущий сахар", "currentSugarError");
+            const carbs = validateAndGetNumber(document.getElementById('carbs').value, "Количество углеводов", "carbsError");
+            const insulinDose = validateAndGetNumber(document.getElementById('insulinDose').value, "Введенная доза инсулина", "insulinDoseError");
+            const mealType = document.getElementById('mealType').value;
+            const activityLevel = document.getElementById('activityLevel').value;
+            
+            const coeffs = getCoefficientsForCalculation();
+
+            if (currentSugar === null || carbs === null || insulinDose === null || coeffs === null) {
+                document.getElementById('predictionArea').style.display = 'none';
+                return;
+            }
+
+            const { carbRatio, sensitivityFactor, targetSugar } = coeffs;
+
+            const foodDose = (carbs / 10) * carbRatio;
+            let correctionDose = 0;
+            if (currentSugar > targetSugar) {
+                correctionDose = (currentSugar - targetSugar) / sensitivityFactor;
+            }
+            correctionDose = Math.max(0, correctionDose); 
+            const totalCalculatedDose = foodDose + correctionDose;
+
+            let carbAbsorptionFactor = 1.0; 
+            switch (mealType) {
+                case 'fast': carbAbsorptionFactor = 1.1; break; 
+                case 'balanced': carbAbsorptionFactor = 1.0; break;
+                case 'slow': carbAbsorptionFactor = 0.80; break; 
+            }
+
+            let activityEffectOnSugar = 0; 
+            switch (activityLevel) {
+                case 'none': activityEffectOnSugar = 0; break;
+                case 'light': activityEffectOnSugar = -0.8; break; 
+                case 'moderate': activityEffectOnSugar = -2.0; break; 
+            }
+
+            const sugarIncreaseFromEffectiveCarbs = ((carbs * carbAbsorptionFactor) / 10) * carbRatio * sensitivityFactor;
+            const sugarDecreaseFromInsulin = insulinDose * sensitivityFactor;
+            let predictedSugar = currentSugar + sugarIncreaseFromEffectiveCarbs - sugarDecreaseFromInsulin + activityEffectOnSugar;
+
+            if (predictedSugar < 0.5) predictedSugar = 0.5; 
+            if (predictedSugar > 40.0) predictedSugar = 40.0;
+
+            document.getElementById('foodDoseResult').textContent = foodDose.toFixed(1);
+            document.getElementById('correctionDoseResult').textContent = correctionDose.toFixed(1);
+            document.getElementById('totalCalculatedDoseResult').textContent = totalCalculatedDose.toFixed(1);
+            document.getElementById('enteredDoseDisplay').textContent = insulinDose.toFixed(1);
+            const doseDifference = insulinDose - totalCalculatedDose;
+            document.getElementById('doseDifferenceResult').textContent = doseDifference.toFixed(1) + 
+                (doseDifference > 0.1 ? " (введено больше ОРПИ)" : doseDifference < -0.1 ? " (введено меньше ОРПИ)" : " (введено по ОРПИ)");
+            
+            document.getElementById('predictedSugarResult').textContent = predictedSugar.toFixed(1);
+
+            let comments = "Это КРАЙНЕ ПРИБЛИЗИТЕЛЬНЫЙ прогноз! Активный инсулин (IOB) НЕ учтен. ";
+            if (predictedSugar < 3.9 && predictedSugar > 0.5) {
+                comments += "Прогнозируется НИЗКИЙ уровень сахара. Будьте предельно внимательны, готовы к купированию гипогликемии. СРОЧНО обсудите с врачом, если прогнозы или реальные ситуации повторяются.";
+            } else if (predictedSugar > 11.1 && predictedSugar < 40.0) {
+                comments += "Прогнозируется ВЫСОКИЙ уровень сахара. Обсудите с врачом, если прогнозы или реальные ситуации повторяются, для коррекции терапии.";
+            } else if (predictedSugar >= 3.9 && predictedSugar <= 11.1) {
+                comments += "Прогнозируется уровень сахара в условно целевом диапазоне (для постпрандиального значения).";
+            }
+             comments += " Реальный сахар может ЗНАЧИТЕЛЬНО отличаться. ВСЕГДА проверяйте глюкометром!"
+             document.getElementById('additionalComments').textContent = comments;
+            document.getElementById('predictionArea').style.display = 'block';
+        }
+        // --- END OF CALCULATOR JavaScript ---
+
+
+        // --- START OF DIARY APP JavaScript ---
         // --- STATE ---
         let currentView = 'calendar';
         let selectedDate = new Date().toISOString().split('T')[0];
         let currentTheme = localStorage.getItem('diabetesAppTheme') || 'light';
         
         let products = JSON.parse(localStorage.getItem('diabetesAppProducts')) || [
-            { id: 1, name: 'Хлеб белый', carbs: 12, insulinRatio: 1 },
+            { id: 1, name: 'Хлеб белый', carbs: 12, insulinRatio: 1 }, // Default carbs per 100g, not per XE
             { id: 2, name: 'Рис отварной', carbs: 25, insulinRatio: 2 },
             { id: 3, name: 'Картофель', carbs: 16, insulinRatio: 1.5 },
             { id: 4, name: 'Яблоко среднее', carbs: 15, insulinRatio: 1 },
@@ -302,6 +831,7 @@
         const analyticsViewEl = document.getElementById('analyticsView');
         const reportsViewEl = document.getElementById('reportsView');
         const productsViewEl = document.getElementById('productsView');
+        const calculatorViewEl = document.getElementById('calculatorView'); // New
         const viewContents = document.querySelectorAll('.view-content');
 
         const calendarHeaderEl = document.getElementById('calendarHeader');
@@ -328,9 +858,13 @@
             if (theme === 'dark') {
                 document.documentElement.classList.add('dark');
                 darkModeToggleBtn.innerHTML = `<i data-lucide="moon" class="w-6 h-6 text-blue-400"></i>`;
+                document.getElementById('calculatorHost').style.backgroundColor = '#1e293b'; // dark:bg-slate-800
+                document.getElementById('calculatorHost').style.color = '#e2e8f0'; // dark:text-slate-200 (approx)
             } else {
                 document.documentElement.classList.remove('dark');
                 darkModeToggleBtn.innerHTML = `<i data-lucide="sun" class="w-6 h-6 text-yellow-500"></i>`;
+                document.getElementById('calculatorHost').style.backgroundColor = '#f0f4f8'; // Original light bg
+                document.getElementById('calculatorHost').style.color = '#333'; // Original light text
             }
             currentTheme = theme; // Update global state
             localStorage.setItem('diabetesAppTheme', theme);
@@ -341,32 +875,31 @@
         function updateChartColors(theme) {
             const isDark = theme === 'dark';
             const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
-            const textColor = isDark ? '#cbd5e1' : '#4b5563'; // slate-300 vs gray-600 (Tailwind colors)
+            const textColor = isDark ? '#cbd5e1' : '#4b5563'; 
 
             Chart.defaults.color = textColor;
             Chart.defaults.borderColor = gridColor;
             
-            // Specific chart dataset color updates
             if (dayGlucoseChartInstance) {
                 const ds = dayGlucoseChartInstance.data.datasets[0];
-                ds.borderColor = isDark ? '#f87171' : '#ef4444'; // red-400 vs red-500
+                ds.borderColor = isDark ? '#f87171' : '#ef4444'; 
                 ds.pointBackgroundColor = isDark ? '#f87171' : '#ef4444';
-                dayGlucoseChartInstance.update('none'); // 'none' for no animation
+                dayGlucoseChartInstance.update('none'); 
             }
             if (weekGlucoseChartInstance) {
                 const ds = weekGlucoseChartInstance.data.datasets[0];
                 ds.borderColor = isDark ? '#f87171' : '#ef4444';
-                ds.backgroundColor = isDark ? 'rgba(248, 113, 113, 0.3)' : '#fecaca'; // red-400 with alpha vs red-200
+                ds.backgroundColor = isDark ? 'rgba(248, 113, 113, 0.3)' : '#fecaca'; 
                 weekGlucoseChartInstance.update('none');
             }
             if (carbsInsulinChartInstance) {
-                carbsInsulinChartInstance.data.datasets[0].backgroundColor = isDark ? '#60a5fa' : '#3b82f6'; // blue-400 vs blue-500
-                carbsInsulinChartInstance.data.datasets[1].backgroundColor = isDark ? '#34d399' : '#10b981'; // green-400 vs green-500
+                carbsInsulinChartInstance.data.datasets[0].backgroundColor = isDark ? '#60a5fa' : '#3b82f6'; 
+                carbsInsulinChartInstance.data.datasets[1].backgroundColor = isDark ? '#34d399' : '#10b981'; 
                 carbsInsulinChartInstance.update('none');
             }
             if (activityChartInstance) {
-                activityChartInstance.data.datasets[0].backgroundColor = isDark ? '#fbbf24' : '#f59e0b'; // amber-400 vs amber-500
-                activityChartInstance.data.datasets[1].backgroundColor = isDark ? '#f87171' : '#ef4444'; // red-400 vs red-500
+                activityChartInstance.data.datasets[0].backgroundColor = isDark ? '#fbbf24' : '#f59e0b'; 
+                activityChartInstance.data.datasets[1].backgroundColor = isDark ? '#f87171' : '#ef4444'; 
                 activityChartInstance.update('none');
             }
         }
@@ -402,7 +935,7 @@
 
                 const carbsPer100g = productDetails.carbs;
                 const actualCarbs = (carbsPer100g * item.amount) / 100;
-                const breadUnits = actualCarbs / 12;
+                const breadUnits = actualCarbs / 12; // Standard 1 XE = 12g carbs
                 
                 totalCarbs += actualCarbs;
                 totalInsulin += breadUnits * productDetails.insulinRatio;
@@ -415,11 +948,11 @@
             };
         }
 
-        function getGlucoseColor(glucose) { // Relies on global currentTheme
+        function getGlucoseColor(glucose) { 
             const isDark = currentTheme === 'dark';
             if (glucose < 4) return isDark ? 'text-blue-400' : 'text-blue-600';
             if (glucose <= 7) return isDark ? 'text-green-400' : 'text-green-600';
-            if (glucose <= 10) return isDark ? 'text-yellow-400' : 'text-yellow-500'; // yellow-500 might be better on light
+            if (glucose <= 10) return isDark ? 'text-yellow-400' : 'text-yellow-500'; 
             return isDark ? 'text-red-400' : 'text-red-600';
         }
 
@@ -441,18 +974,17 @@
         function renderNavigation() {
             document.querySelectorAll('.nav-button').forEach(button => {
                 const isActive = button.dataset.view === currentView;
-                // Remove all theme-related and state-related classes first
                 button.classList.remove(
                     'bg-blue-500', 'text-white', 'dark:bg-blue-600',
                     'bg-gray-100', 'text-gray-700', 'hover:bg-gray-200',
                     'dark:bg-slate-700', 'dark:text-gray-300', 'dark:hover:bg-slate-600'
                 );
                 if (isActive) {
-                    button.classList.add('bg-blue-500', 'text-white', 'dark:bg-blue-600');
+                    button.classList.add('text-blue-500', 'dark:text-blue-400');
                 } else {
                     button.classList.add(
-                        'bg-gray-100', 'text-gray-700', 'hover:bg-gray-200',
-                        'dark:bg-slate-700', 'dark:text-gray-300', 'dark:hover:bg-slate-600'
+                        'text-gray-600', 'hover:text-gray-800',
+                        'dark:text-gray-400', 'dark:hover:text-gray-200'
                     );
                 }
             });
@@ -463,6 +995,12 @@
             const currentViewEl = document.getElementById(`${currentView}View`);
             if (currentViewEl) {
                  currentViewEl.style.display = (currentView === 'calendar' || currentView === 'analytics') ? 'grid' : 'block';
+                 if (currentView === 'calculator') { // Special handling for calculator
+                     currentViewEl.style.display = 'block'; // Its content is handled by #calculatorHost
+                     if (typeof loadSettingsToCalcForm === 'function') {
+                         loadSettingsToCalcForm(); // Load calculator settings when its view is shown
+                     }
+                 }
             }
 
             renderNavigation();
@@ -480,8 +1018,14 @@
                 case 'products':
                     renderProductsView();
                     break;
+                case 'calculator':
+                    // Specific rendering for calculator is mostly its own HTML/CSS.
+                    // `loadSettingsToCalcForm` is called above.
+                    // We need to ensure calculator's popups are above diary's modals if they ever overlap
+                    // (calculator popups have z-index 1000, diary modals z-index 50 - calculator is higher)
+                    break; 
             }
-            lucide.createIcons();
+            lucide.createIcons(); // Re-create icons for the current view
         }
 
         function generateCalendarDays() {
@@ -525,7 +1069,7 @@
                     const button = document.createElement('button');
                     let baseClasses = `w-full h-full rounded-lg flex flex-col items-center justify-center text-sm transition-colors`;
                     
-                    let stateClasses = 'hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-slate-700'; // Default for empty day
+                    let stateClasses = 'hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-slate-700'; 
                     if (selectedDate === dayObj.date) {
                         stateClasses = 'bg-blue-500 text-white dark:bg-blue-600 dark:text-white';
                     } else if ((meals[dayObj.date]?.length > 0 || glucoseRecords[dayObj.date]?.length > 0)) {
@@ -667,7 +1211,7 @@
                     datasets: [{
                         label: 'Глюкоза',
                         data: chartPoints.map(d => d.glucose),
-                        borderColor: isDark ? '#f87171' : '#ef4444', // red-400 vs red-500
+                        borderColor: isDark ? '#f87171' : '#ef4444', 
                         backgroundColor: 'transparent',
                         tension: 0.1,
                         pointBackgroundColor: isDark ? '#f87171' : '#ef4444',
@@ -679,8 +1223,8 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
-                        y: { beginAtZero: false, min: 3, max: 15, ticks: { font: { size: 10 }}}, // Colors handled by Chart.defaults
-                        x: { ticks: { font: { size: 10 }}} // Colors handled by Chart.defaults
+                        y: { beginAtZero: false, min: 3, max: 15, ticks: { font: { size: 10 }}}, 
+                        x: { ticks: { font: { size: 10 }}} 
                     },
                     plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } }
                 }
@@ -760,7 +1304,6 @@
             const weekData = getWeekData();
             const isDark = currentTheme === 'dark';
 
-            // Week Glucose Chart
             const weekGlucoseCtx = document.getElementById('weekGlucoseChartCanvas').getContext('2d');
             if (weekGlucoseChartInstance) weekGlucoseChartInstance.destroy();
             weekGlucoseChartInstance = new Chart(weekGlucoseCtx, {
@@ -770,8 +1313,8 @@
                     datasets: [{
                         label: 'Средняя глюкоза',
                         data: weekData.map(d => d.glucose > 0 ? d.glucose : null), 
-                        borderColor: isDark ? '#f87171' : '#ef4444', // red-400 vs red-500
-                        backgroundColor: isDark ? 'rgba(248, 113, 113, 0.3)' : '#fecaca', // red-400 alpha vs red-200
+                        borderColor: isDark ? '#f87171' : '#ef4444', 
+                        backgroundColor: isDark ? 'rgba(248, 113, 113, 0.3)' : '#fecaca', 
                         fill: true,
                         tension: 0.1,
                         borderWidth: 2
@@ -780,7 +1323,6 @@
                 options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: false, min: 3, max: 15 } }, plugins: { tooltip: {callbacks: {label: (ctx) => `${ctx.raw} ммоль/л`}} }}
             });
 
-            // Carbs and Insulin Chart
             const carbsInsulinCtx = document.getElementById('carbsInsulinChartCanvas').getContext('2d');
             if (carbsInsulinChartInstance) carbsInsulinChartInstance.destroy();
             carbsInsulinChartInstance = new Chart(carbsInsulinCtx, {
@@ -788,14 +1330,13 @@
                 data: {
                     labels: weekData.map(d => d.date),
                     datasets: [
-                        { label: 'Углеводы (г)', data: weekData.map(d => d.carbs), backgroundColor: isDark ? '#60a5fa' : '#3b82f6' }, // blue-400 vs blue-500
-                        { label: 'Инсулин (ед)', data: weekData.map(d => d.insulin), backgroundColor: isDark ? '#34d399' : '#10b981' } // green-400 vs green-500
+                        { label: 'Углеводы (г)', data: weekData.map(d => d.carbs), backgroundColor: isDark ? '#60a5fa' : '#3b82f6' }, 
+                        { label: 'Инсулин (ед)', data: weekData.map(d => d.insulin), backgroundColor: isDark ? '#34d399' : '#10b981' } 
                     ]
                 },
                 options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
             });
             
-            // Activity Chart
             const activityCtx = document.getElementById('activityChartCanvas').getContext('2d');
             if (activityChartInstance) activityChartInstance.destroy();
             activityChartInstance = new Chart(activityCtx, {
@@ -803,14 +1344,13 @@
                 data: {
                     labels: weekData.map(d => d.date),
                     datasets: [
-                        { label: 'Приемы пищи', data: weekData.map(d => d.mealsCount), backgroundColor: isDark ? '#fbbf24' : '#f59e0b' }, // amber-400 vs amber-500
-                        { label: 'Измерения глюкозы', data: weekData.map(d => d.glucoseCount), backgroundColor: isDark ? '#f87171' : '#ef4444' } // red-400 vs red-500
+                        { label: 'Приемы пищи', data: weekData.map(d => d.mealsCount), backgroundColor: isDark ? '#fbbf24' : '#f59e0b' }, 
+                        { label: 'Измерения глюкозы', data: weekData.map(d => d.glucoseCount), backgroundColor: isDark ? '#f87171' : '#ef4444' } 
                     ]
                 },
                 options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
             });
 
-            // Week Summary
             const summaryContainer = document.getElementById('weekSummaryContainer');
             const totalCarbs = weekData.reduce((sum, day) => sum + day.carbs, 0);
             const totalInsulin = Math.round(weekData.reduce((sum, day) => sum + day.insulin, 0) * 10) / 10;
@@ -859,7 +1399,6 @@
                 `;
             });
 
-            // Glucose Control Analysis
             const analysisContainer = document.getElementById('glucoseControlAnalysisContainer');
             const allGlucose = weekData.filter(d => d.glucose > 0).map(d => d.glucose);
             const inRange = allGlucose.filter(g => g >= 4 && g <= 7).length;
@@ -879,7 +1418,6 @@
                 </div>
             `;
 
-            // Recommendations
             const recContainer = document.getElementById('recommendationsContainer');
             recContainer.innerHTML = `<h3 class="text-lg font-semibold mb-4 dark:text-gray-100">Рекомендации</h3><div class="space-y-2 text-sm"></div>`;
             const recListEl = recContainer.querySelector('.space-y-2');
@@ -929,7 +1467,7 @@
                 }
                 saveData();
                 if (currentView === 'products') renderProductsView();
-                lucide.createIcons(); // In case any icons are in the products view or affected by data change.
+                lucide.createIcons(); 
                 closeModal(addProductModalEl);
             } else {
                 alert('Пожалуйста, заполните все поля корректно.');
@@ -955,8 +1493,6 @@
                 products = products.filter(p => p.id !== id);
                 saveData();
                 if (currentView === 'products') renderProductsView();
-                // If product is deleted, meal calculations might change. Consider full re-render if on calendar or analytics.
-                // For simplicity, just re-render product view. Other views will update on next navigation.
                 lucide.createIcons();
             }
         }
@@ -1059,7 +1595,7 @@
             meals[selectedDate] = [...dayMealsData, newMealEntry].sort((a, b) => a.time.localeCompare(b.time));
             saveData();
             if (currentView === 'calendar') renderCalendarView(); 
-            else if (currentView === 'analytics' || currentView === 'reports') renderView(); // Re-render if on analytics/reports
+            else if (currentView === 'analytics' || currentView === 'reports') renderView(); 
             lucide.createIcons();
             closeModal(addMealModalEl);
         });
@@ -1130,12 +1666,11 @@
 
         // --- INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', () => {
-            applyTheme(currentTheme); // Apply theme before first render
+            applyTheme(currentTheme); 
             renderView(); 
-            // lucide.createIcons(); // renderView already calls this
         });
+        // --- END OF DIARY APP JavaScript ---
 
     </script>
 </body>
 </html>
---- END OF FILE index.html ---
