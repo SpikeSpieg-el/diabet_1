@@ -616,7 +616,7 @@
                         
                         <h4 id="popupTitle">Заголовок подсказки</h4>
                         <div id="popupText">Текст подсказки здесь...</div>
-                        <button class="popup-close-btn" onclick="hidePopup()">×</button>
+                        <button class="popup-close-btn" onclick="hidePopup()">&times;</button>
                     </div>
                     
                 </div>
@@ -959,14 +959,22 @@
         // --- START OF DIARY APP JavaScript ---
         // --- STATE ---
         let currentView = 'calendar';
-        let selectedDate = new Date().toISOString().split('T')[0];
+        
+        function getLocalDateYYYYMMDD(dateObj) {
+            const yearStr = dateObj.getFullYear();
+            const monthStr = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+            const dayStr = dateObj.getDate().toString().padStart(2, '0');
+            return `${yearStr}-${monthStr}-${dayStr}`;
+        }
+        let selectedDate = getLocalDateYYYYMMDD(new Date()); // Initial selectedDate is local YYYY-MM-DD
+
         let currentTheme = localStorage.getItem('diabetesAppTheme') || 'light';
         
         let products = JSON.parse(localStorage.getItem('diabetesAppProducts')) || [
             { id: 1, name: 'Хлеб белый', carbs: 50, insulinRatio: 1 }, 
             { id: 2, name: 'Рис отварной', carbs: 28, insulinRatio: 1.5 },
             { id: 3, name: 'Картофель отварной', carbs: 16, insulinRatio: 1 },
-            { id: 4, name: 'Яблоко', carbs: 14, insulinRatio: 0.5 }, // per 100g
+            { id: 4, name: 'Яблоко', carbs: 14, insulinRatio: 0.5 }, 
             { id: 5, name: 'Молоко 3.2%', carbs: 4.7, insulinRatio: 0.25 }
         ];
         let meals = JSON.parse(localStorage.getItem('diabetesAppMeals')) || {};
@@ -1073,7 +1081,6 @@
                 activityChartInstance.data.datasets[1].backgroundColor = isDark ? '#f87171' : '#ef4444'; 
                 activityChartInstance.update('none');
             }
-             // Update month charts as well
             if (monthGlucoseChartInstance) {
                 const ds = monthGlucoseChartInstance.data.datasets[0];
                 ds.borderColor = isDark ? '#f87171' : '#ef4444';
@@ -1153,18 +1160,17 @@
             }
         }
         
-        // Corrected formatDate function
-        function formatDate(dateString) { // dateString is YYYY-MM-DD
+        // Corrected formatDate function (relies on dateString being local YYYY-MM-DD)
+        function formatDate(dateString) { 
             if (!dateString) return '';
             const parts = dateString.split('-');
-            if (parts.length !== 3) return dateString; // Fallback for invalid format
+            if (parts.length !== 3) return dateString;
 
             const year = parseInt(parts[0], 10);
-            const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed for Date constructor
+            const month = parseInt(parts[1], 10) - 1; 
             const day = parseInt(parts[2], 10);
             
-            // Create a date object using local timezone components
-            const localDate = new Date(year, month, day);
+            const localDate = new Date(year, month, day); // Creates date at 00:00:00 local time
             
             return localDate.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
         }
@@ -1200,7 +1206,7 @@
             return predictedSugar;
         }
 
-        function findSugarBeforeMeal(dateStr, mealTimeStr) {
+        function findSugarBeforeMeal(dateStr, mealTimeStr) { // dateStr is local YYYY-MM-DD
             const dayGlucose = getDayGlucose(dateStr)
                 .filter(r => r.time < mealTimeStr)
                 .sort((a, b) => b.time.localeCompare(a.time)); 
@@ -1218,7 +1224,7 @@
             return null;
         }
 
-        function isPredictionSuperseded(dateStr, mealTimeStr) {
+        function isPredictionSuperseded(dateStr, mealTimeStr) { // dateStr is local YYYY-MM-DD
             const dayGlucoseAfterMeal = getDayGlucose(dateStr)
                 .filter(r => r.time > mealTimeStr)
                 .sort((a, b) => a.time.localeCompare(b.time)); 
@@ -1231,7 +1237,7 @@
             const predictionWindowEnd = new Date(mealDateTime.getTime() + 4 * 60 * 60 * 1000); 
 
             if (firstGlucoseAfterMealTime < predictionWindowEnd) {
-                if (dateStr === new Date().toISOString().split('T')[0]) { 
+                if (dateStr === getLocalDateYYYYMMDD(new Date())) { 
                     return firstGlucoseAfterMealTime <= currentTime;
                 }
                 return true; 
@@ -1247,8 +1253,8 @@
 
             predictedSugarSectionEl.style.display = 'none'; 
 
-            const todayStr = new Date().toISOString().split('T')[0];
-            if (selectedDate !== todayStr) {
+            const todayLocalStr = getLocalDateYYYYMMDD(new Date());
+            if (selectedDate !== todayLocalStr) { // Compare with local 'today'
                 return; 
             }
 
@@ -1258,7 +1264,7 @@
             }
             const latestMeal = dayMealsData[0];
 
-            const mealDateTime = new Date(`${selectedDate}T${latestMeal.time}`);
+            const mealDateTime = new Date(`${selectedDate}T${latestMeal.time}`); // selectedDate is local YYYY-MM-DD
             const currentTime = new Date();
             const hoursSinceMeal = (currentTime - mealDateTime) / (1000 * 60 * 60);
 
@@ -1378,8 +1384,9 @@
             const days = [];
             for (let i = 0; i < startDay; i++) days.push(null);
             for (let day = 1; day <= daysInMonth; day++) {
-                const date = new Date(currentYear, currentMonth, day);
-                days.push({ date: date.toISOString().split('T')[0], day });
+                const localDayDate = new Date(currentYear, currentMonth, day);
+                const localDateString = getLocalDateYYYYMMDD(localDayDate); // Use local YYYY-MM-DD
+                days.push({ date: localDateString, day });
             }
             return days;
         }
@@ -1408,7 +1415,7 @@
                     let baseClasses = `w-full h-full rounded-lg flex flex-col items-center justify-center text-sm transition-colors`;
                     
                     let stateClasses = 'hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-slate-700'; 
-                    if (selectedDate === dayObj.date) {
+                    if (selectedDate === dayObj.date) { // dayObj.date is now local YYYY-MM-DD
                         stateClasses = 'bg-blue-500 text-white dark:bg-blue-600 dark:text-white';
                     } else if ((meals[dayObj.date]?.length > 0 || glucoseRecords[dayObj.date]?.length > 0)) {
                         stateClasses = 'bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-800/80 dark:text-green-300 dark:hover:bg-green-700/80';
@@ -1423,7 +1430,7 @@
                         </div>
                     `;
                     button.onclick = () => {
-                        selectedDate = dayObj.date;
+                        selectedDate = dayObj.date; // Set selectedDate to local YYYY-MM-DD
                         renderCalendarView(); 
                     };
                     dayDiv.appendChild(button);
@@ -1433,7 +1440,7 @@
         }
 
         function renderDayMeals() {
-            mealsHeaderEl.textContent = `Питание ${formatDate(selectedDate)}`;
+            mealsHeaderEl.textContent = `Питание ${formatDate(selectedDate)}`; // selectedDate is local YYYY-MM-DD
             dayMealsContainerEl.innerHTML = '';
             const dayMealsData = getDayMeals(selectedDate).sort((a, b) => b.time.localeCompare(a.time)); 
 
@@ -1486,7 +1493,7 @@
         }
         
         function renderDayGlucose() {
-            glucoseHeaderEl.textContent = `Глюкоза ${formatDate(selectedDate)}`;
+            glucoseHeaderEl.textContent = `Глюкоза ${formatDate(selectedDate)}`; // selectedDate is local YYYY-MM-DD
             dayGlucoseContainerEl.innerHTML = '';
             const dayGlucoseData = getDayGlucose(selectedDate).sort((a, b) => b.time.localeCompare(a.time));
 
@@ -1575,7 +1582,7 @@
             renderDayGlucose();
             renderPredictedCurrentSugar();
             renderDaySummary(); 
-            lucide.createIcons(); // Ensure icons for export/import buttons are rendered
+            lucide.createIcons(); 
         }
 
         function renderDaySummary() {
@@ -1628,11 +1635,11 @@
         // --- Analytics and Reports Data Helpers ---
         function getWeekData() {
             const data = [];
-            const today = new Date();
+            const today = new Date(); // Local 'today'
             for (let i = 6; i >= 0; i--) {
                 const date = new Date(today);
-                date.setDate(date.getDate() - i);
-                const dateStr = date.toISOString().split('T')[0];
+                date.setDate(today.getDate() - i); // Calculate past local dates
+                const dateStr = getLocalDateYYYYMMDD(date); // Use local YYYY-MM-DD
                 
                 const dayMealsData = getDayMeals(dateStr);
                 const dayGlucoseData = getDayGlucose(dateStr);
@@ -1652,8 +1659,8 @@
                 }
                 
                 data.push({
-                    date: formatDate(dateStr).substring(0,5), // Use dd.mm for labels
-                    fullDate: dateStr,
+                    date: formatDate(dateStr).substring(0,5), // dd.mm for labels
+                    fullDate: dateStr, // local YYYY-MM-DD
                     carbs: Math.round(totalCarbs),
                     insulin: Math.round(totalInsulin * 10) / 10,
                     glucose: avgGlucose > 0 ? Math.round(avgGlucose * 10) / 10 : 0,
@@ -1663,6 +1670,48 @@
             }
             return data;
         }
+        
+        function getMonthData() {
+            const data = [];
+            const today = new Date();
+            const currentYear = today.getFullYear();
+            const currentMonth = today.getMonth(); // 0-indexed
+            const daysInCurrentMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+            
+            for (let dayOfMonth = 1; dayOfMonth <= daysInCurrentMonth; dayOfMonth++) {
+                const date = new Date(currentYear, currentMonth, dayOfMonth);
+                const dateStr = getLocalDateYYYYMMDD(date); // Local YYYY-MM-DD string
+                
+                const dayMealsData = getDayMeals(dateStr);
+                const dayGlucoseData = getDayGlucose(dateStr);
+                
+                let totalCarbs = 0;
+                let totalInsulin = 0;
+                
+                dayMealsData.forEach(meal => {
+                    const stats = calculateMealStats(meal.products);
+                    totalCarbs += parseFloat(stats.carbs);
+                    totalInsulin += meal.actualInsulin || parseFloat(stats.insulin) || 0;
+                });
+                
+                let avgGlucose = 0;
+                if (dayGlucoseData.length > 0) {
+                    avgGlucose = dayGlucoseData.reduce((sum, record) => sum + record.glucose, 0) / dayGlucoseData.length;
+                }
+                
+                data.push({
+                    date: date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }), // dd.mm for chart labels
+                    fullDate: dateStr, // local YYYY-MM-DD for data keys
+                    carbs: Math.round(totalCarbs),
+                    insulin: Math.round(totalInsulin * 10) / 10,
+                    glucose: avgGlucose > 0 ? Math.round(avgGlucose * 10) / 10 : 0,
+                    mealsCount: dayMealsData.length,
+                    glucoseCount: dayGlucoseData.length
+                });
+            }
+            return data;
+        }
+
 
         // --- Analytics View Functions ---
         function renderAnalyticsView() {
@@ -1740,7 +1789,7 @@
                     maintainAspectRatio: false, 
                     scales: { 
                         y: { beginAtZero: false, min: 3, max: 15 },
-                        x: { ticks: { maxRotation: 45, minRotation: 45, autoSkip: true, maxTicksLimit: 15 } } // Added for better label display
+                        x: { ticks: { maxRotation: 45, minRotation: 45, autoSkip: true, maxTicksLimit: 15 } } 
                     }, 
                     plugins: { tooltip: {callbacks: {label: (ctx) => `${ctx.raw} ммоль/л`}} }
                 }
@@ -1787,7 +1836,7 @@
                     }
                 }
             });
-            updateChartColors(currentTheme); // ensure new charts also get correct colors
+            updateChartColors(currentTheme); 
 
             // Недельная сводка
             const weekSummaryContainer = document.getElementById('weekSummaryContainer');
@@ -2143,47 +2192,6 @@
             });
         }
 
-        function getMonthData() {
-            const data = [];
-            const today = new Date();
-            const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-            const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-            
-            for (let i = 0; i < lastDayOfMonth.getDate(); i++) {
-                const date = new Date(firstDayOfMonth);
-                date.setDate(date.getDate() + i + 1); // Dates are 1-indexed
-                const dateStr = date.toISOString().split('T')[0];
-                
-                const dayMealsData = getDayMeals(dateStr);
-                const dayGlucoseData = getDayGlucose(dateStr);
-                
-                let totalCarbs = 0;
-                let totalInsulin = 0;
-                
-                dayMealsData.forEach(meal => {
-                    const stats = calculateMealStats(meal.products);
-                    totalCarbs += parseFloat(stats.carbs);
-                    totalInsulin += meal.actualInsulin || parseFloat(stats.insulin) || 0;
-                });
-                
-                let avgGlucose = 0;
-                if (dayGlucoseData.length > 0) {
-                    avgGlucose = dayGlucoseData.reduce((sum, record) => sum + record.glucose, 0) / dayGlucoseData.length;
-                }
-                
-                data.push({
-                    date: formatDate(dateStr).substring(0,5), // Use dd.mm for labels
-                    fullDate: dateStr,
-                    carbs: Math.round(totalCarbs),
-                    insulin: Math.round(totalInsulin * 10) / 10,
-                    glucose: avgGlucose > 0 ? Math.round(avgGlucose * 10) / 10 : 0,
-                    mealsCount: dayMealsData.length,
-                    glucoseCount: dayGlucoseData.length
-                });
-            }
-            return data;
-        }
-
         // --- EXPORT/IMPORT FUNCTIONALITY ---
         document.getElementById('exportDayDataBtn').addEventListener('click', () => {
             const dayMealsData = getDayMeals(selectedDate);
@@ -2195,7 +2203,7 @@
             }
 
             const dataToExport = {
-                date: selectedDate,
+                date: selectedDate, // selectedDate is already local YYYY-MM-DD
                 meals: dayMealsData,
                 glucoseRecords: dayGlucoseData
             };
@@ -2216,8 +2224,8 @@
             const allDataToExport = {
                 allData: { 
                     products: products,
-                    meals: meals,
-                    glucoseRecords: glucoseRecords
+                    meals: meals, // meals keys are local YYYY-MM-DD
+                    glucoseRecords: glucoseRecords // glucoseRecords keys are local YYYY-MM-DD
                 }
             };
             const jsonData = JSON.stringify(allDataToExport, null, 2);
@@ -2225,7 +2233,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `diary_all_data_${new Date().toISOString().split('T')[0]}.json`;
+            a.download = `diary_all_data_${getLocalDateYYYYMMDD(new Date())}.json`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -2245,23 +2253,30 @@
                     try {
                         const importedData = JSON.parse(e.target.result);
                         
-                        if (importedData && importedData.allData) { // Full data import
-                            if (importedData.allData.meals) meals = importedData.allData.meals; else meals = {};
-                            if (importedData.allData.glucoseRecords) glucoseRecords = importedData.allData.glucoseRecords; else glucoseRecords = {};
-                            if (importedData.allData.products) products = importedData.allData.products; else products = [];
-                            alert('Все данные импортированы. Страница будет обновлена.');
-                        } else if (importedData && importedData.date && (importedData.meals || importedData.glucoseRecords)) { // Single day import
-                            const dateToImport = importedData.date;
+                        if (importedData && importedData.allData) { 
+                            if (confirm("Это приведет к полной замене всех существующих данных. Продолжить?")) {
+                                if (importedData.allData.meals) meals = importedData.allData.meals; else meals = {};
+                                if (importedData.allData.glucoseRecords) glucoseRecords = importedData.allData.glucoseRecords; else glucoseRecords = {};
+                                if (importedData.allData.products) products = importedData.allData.products; else products = [];
+                                alert('Все данные импортированы и заменены.');
+                            } else {
+                                alert('Импорт отменен.');
+                                event.target.value = null; 
+                                return;
+                            }
+                        } else if (importedData && importedData.date && (importedData.meals || importedData.glucoseRecords)) { 
+                            const dateToImport = importedData.date; // Assume this is local YYYY-MM-DD from export
                             if (importedData.meals) {
                                 const existingMeals = meals[dateToImport] || [];
-                                const newMeals = importedData.meals.filter(im => !existingMeals.some(em => em.id === im.id));
+                                const newMeals = importedData.meals.filter(im => !existingMeals.some(em => em.id === im.id)); // Avoid duplicates by ID
                                 meals[dateToImport] = [...existingMeals, ...newMeals].sort((a, b) => a.time.localeCompare(b.time));
                             }
                             if (importedData.glucoseRecords) {
                                  const existingGlucose = glucoseRecords[dateToImport] || [];
-                                 const newGlucose = importedData.glucoseRecords.filter(ig => !existingGlucose.some(eg => eg.id === ig.id));
+                                 const newGlucose = importedData.glucoseRecords.filter(ig => !existingGlucose.some(eg => eg.id === ig.id)); // Avoid duplicates by ID
                                 glucoseRecords[dateToImport] = [...existingGlucose, ...newGlucose].sort((a, b) => a.time.localeCompare(b.time));
                             }
+                            selectedDate = dateToImport; // Switch to the imported day
                             alert(`Данные за ${formatDate(dateToImport)} импортированы и объединены.`);
                         } else {
                             alert('Неверный формат файла. Ожидается JSON с полями "date", "meals", "glucoseRecords" для однодневного импорта, или "allData" для полного импорта.');
@@ -2273,7 +2288,7 @@
                         console.error("Error parsing imported JSON:", error);
                         alert('Ошибка при чтении файла. Убедитесь, что это корректный JSON файл.');
                     }
-                    event.target.value = null; // Reset file input
+                    event.target.value = null; 
                 };
                 reader.readAsText(file);
             }
