@@ -63,7 +63,7 @@
         #calculatorHost button.save-settings:hover { background-color: #18a277; }
 
         .result-section {
-            margin-top: 35px; padding: 25px; background-color: #eef3f7;
+            margin-top: 35px; padding: 25px;
             border-radius: 8px; border: 1px solid #d1d9e0;
         }
         .result-section p { margin: 12px 0; font-size: 1.05em; }
@@ -194,6 +194,75 @@
             .calc-coeffs-display label { font-size: 0.9em; margin-right: 5px; }
             .calc-coeffs-display input { width: 60px !important; font-size: 0.9em;}
         }
+
+        /* --- Адаптив для навигации --- */
+        @media (max-width: 768px) {
+            .fixed.bottom-0.left-0.right-0.bg-white {
+                padding-bottom: env(safe-area-inset-bottom, 0);
+                height: 70px;
+                min-height: 70px;
+                border-radius: 18px 18px 0 0;
+                box-shadow: 0 -2px 16px rgba(0,0,0,0.08);
+            }
+            #navigation-buttons {
+                gap: 0.5rem;
+            }
+            .nav-button {
+                flex: 1 1 0%;
+                min-width: 0;
+                padding: 0.5rem 0 0.2rem 0;
+                border-radius: 12px;
+                margin: 0 2px;
+                font-size: 1.05em;
+            }
+            .nav-button i {
+                width: 2.1rem !important;
+                height: 2.1rem !important;
+                margin-bottom: 0.1rem;
+            }
+            .nav-button span {
+                font-size: 0.90em;
+                font-weight: 500;
+                line-height: 1.1;
+                letter-spacing: -0.01em;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                display: block;
+                text-align: center;
+            }
+        }
+        @media (max-width: 480px) {
+            .fixed.bottom-0.left-0.right-0.bg-white {
+                height: 64px;
+                min-height: 64px;
+                border-radius: 16px 16px 0 0;
+                box-shadow: 0 -2px 18px rgba(0,0,0,0.13);
+            }
+            #navigation-buttons {
+                gap: 0.2rem;
+            }
+            .nav-button {
+                padding: 0.3rem 0 0.1rem 0;
+                font-size: 1em;
+            }
+            .nav-button i {
+                width: 1.7rem !important;
+                height: 1.7rem !important;
+            }
+            .nav-button span {
+                font-size: 0.80em;
+                line-height: 1.05;
+                max-width: 80%;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                display: block;
+                text-align: center;
+            }
+            /* Добавлено: скрываем подписи в навигации на мобильных */
+            .nav-button span { display: none; }
+        }
         /* --- END OF COPIED CALCULATOR STYLES --- */
 
     </style>
@@ -243,7 +312,7 @@
         <div class="pb-20">
         <!-- Календарь View -->
         <div id="calendarView" class="view-content grid grid-cols-1 xl:grid-cols-3 gap-6">
-            <!-- Календарная сетка -->
+            <!-- Календарная сетка (takes 1/3 width on XL) -->
             <div class="bg-white rounded-xl shadow-lg p-6 dark:bg-slate-800">
                 <h2 id="calendarHeader" class="text-xl font-semibold mb-4 dark:text-gray-100"></h2>
                 <div class="grid grid-cols-7 gap-2 mb-4">
@@ -254,62 +323,140 @@
                 </div>
             </div>
 
-            <!-- Приемы пищи за день -->
-            <div class="bg-white rounded-xl shadow-lg p-6 dark:bg-slate-800">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 id="mealsHeader" class="text-xl font-semibold dark:text-gray-100">Питание</h2>
-                    <button id="showAddMealModalBtn" class="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 transition-colors">
-                        <i data-lucide="plus" class="w-5 h-5"></i>
-                    </button>
+            <!-- Right panel for selected day's details (takes 2/3 width on XL, stacking content vertically) -->
+            <div class="xl:col-span-2 space-y-6"> 
+                <!-- Predicted Sugar Section (New) -->
+                <div id="predictedSugarSection" class="bg-white rounded-xl shadow-lg p-6 dark:bg-slate-800" style="display: none;">
+                    <div class="flex justify-between items-center mb-3">
+                        <h2 class="text-xl font-semibold dark:text-gray-100">Прогноз текущего сахара</h2>
+                        <button id="correctPredictionBtn" class="bg-green-500 text-white px-3 py-1.5 rounded-lg hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 transition-colors flex items-center text-sm">
+                            <i data-lucide="edit-3" class="w-4 h-4 mr-1.5"></i> Внести измерение
+                        </button>
+                    </div>
+                    <div id="predictedSugarDisplay" class="text-3xl font-bold mb-1">
+                        {/* Prediction will be shown here */}
+                    </div>
+                    <p id="predictionContext" class="text-xs text-gray-500 dark:text-gray-400"></p>
                 </div>
-                <div id="dayMealsContainer" class="space-y-4 max-h-96 overflow-y-auto">
-                    <!-- Записи о приемах пищи -->
-                </div>
-            </div>
 
-            <!-- Уровень глюкозы за день -->
-            <div class="bg-white rounded-xl shadow-lg p-6 dark:bg-slate-800">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 id="glucoseHeader" class="text-xl font-semibold dark:text-gray-100">Глюкоза</h2>
-                    <button id="showAddGlucoseModalBtn" class="bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 transition-colors">
-                        <i data-lucide="plus" class="w-5 h-5"></i>
-                    </button>
+                
+
+                <!-- Приемы пищи за день -->
+                <div class="bg-white rounded-xl shadow-lg p-6 dark:bg-slate-800">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 id="mealsHeader" class="text-xl font-semibold dark:text-gray-100">Питание</h2>
+                        <button id="showAddMealModalBtn" class="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 transition-colors">
+                            <i data-lucide="plus" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                    <div id="dayMealsContainer" class="space-y-4 max-h-96 overflow-y-auto">
+                        {/* Записи о приемах пищи */}
+                    </div>
                 </div>
-                <div id="dayGlucoseContainer" class="space-y-3 max-h-96 overflow-y-auto">
-                    <!-- Записи глюкозы -->
+
+                <!-- Уровень глюкозы за день -->
+                <div class="bg-white rounded-xl shadow-lg p-6 dark:bg-slate-800">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 id="glucoseHeader" class="text-xl font-semibold dark:text-gray-100">Глюкоза</h2>
+                        <button id="showAddGlucoseModalBtn" class="bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 transition-colors">
+                            <i data-lucide="plus" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                    <div id="dayGlucoseContainer" class="space-y-3 max-h-96 overflow-y-auto">
+                        {/* Записи глюкозы */}
+                    </div>
+                    <div id="dayGlucoseChartContainer" class="mt-6" style="display: none;">
+                        <h3 class="text-sm font-medium mb-2 dark:text-gray-300">График за день</h3>
+                        <div class="chart-container h-32">
+                            <canvas id="dayGlucoseChartCanvas"></canvas>
+                        </div>
+                    </div>
+                    
                 </div>
-                <div id="dayGlucoseChartContainer" class="mt-6" style="display: none;">
-                    <h3 class="text-sm font-medium mb-2 dark:text-gray-300">График за день</h3>
-                    <div class="chart-container h-32">
-                        <canvas id="dayGlucoseChartCanvas"></canvas>
+                <!-- Дневная сводка -->
+                <div id="daySummaryContainer" class="bg-white rounded-xl shadow-lg p-6 dark:bg-slate-800">
+                    <h2 class="text-xl font-semibold mb-4 dark:text-gray-100">Сводка за день</h2>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-blue-50 rounded-lg p-4 dark:bg-slate-700">
+                            <div id="dayTotalCarbs" class="text-2xl font-bold text-blue-600 dark:text-blue-400">0г</div>
+                            <div class="text-sm text-blue-600 dark:text-blue-400">Углеводы</div>
+                        </div>
+                        <div class="bg-green-50 rounded-lg p-4 dark:bg-slate-700">
+                            <div id="dayTotalInsulin" class="text-2xl font-bold text-green-600 dark:text-green-400">0 ед</div>
+                            <div class="text-sm text-green-600 dark:text-green-400">Инсулин</div>
+                        </div>
+                        <div class="bg-red-50 rounded-lg p-4 dark:bg-slate-700">
+                            <div id="dayAvgGlucose" class="text-2xl font-bold text-red-600 dark:text-red-400">0</div>
+                            <div class="text-sm text-red-600 dark:text-red-400">Средняя глюкоза</div>
+                        </div>
+                        <div class="bg-yellow-50 rounded-lg p-4 dark:bg-slate-700">
+                            <div id="dayMealsCount" class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">0</div>
+                            <div class="text-sm text-yellow-600 dark:text-yellow-400">Приемов пищи</div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
+
         <!-- Аналитика View -->
-        <div id="analyticsView" class="view-content grid grid-cols-1 lg:grid-cols-2 gap-6" style="display: none;">
-            <div class="bg-white rounded-xl shadow-lg p-6 dark:bg-slate-800">
-                <h2 class="text-xl font-semibold mb-4 dark:text-gray-100">Средний уровень глюкозы (7 дней)</h2>
-                <div class="chart-container h-64">
-                    <canvas id="weekGlucoseChartCanvas"></canvas>
+        <div id="analyticsView" class="view-content space-y-8" style="display: none;">
+            <!-- Недельная аналитика -->
+            <div class="space-y-6">
+                <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">Аналитика за неделю</h2>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-xl shadow-lg p-6 dark:bg-slate-800">
+                        <h3 class="text-xl font-semibold mb-4 dark:text-gray-100">Средний уровень глюкозы</h3>
+                        <div class="chart-container h-64">
+                            <canvas id="weekGlucoseChartCanvas"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-lg p-6 dark:bg-slate-800">
+                        <h3 class="text-xl font-semibold mb-4 dark:text-gray-100">Углеводы и инсулин</h3>
+                        <div class="chart-container h-64">
+                            <canvas id="carbsInsulinChartCanvas"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-lg p-6 dark:bg-slate-800">
+                        <h3 class="text-xl font-semibold mb-4 dark:text-gray-100">Активность</h3>
+                        <div class="chart-container h-64">
+                            <canvas id="activityChartCanvas"></canvas>
+                        </div>
+                    </div>
+                    <div id="weekSummaryContainer" class="bg-white rounded-xl shadow-lg p-6 dark:bg-slate-800">
+                        <h3 class="text-xl font-semibold mb-4 dark:text-gray-100">Сводка</h3>
+                        <!-- Сводка будет вставлена сюда -->
+                    </div>
                 </div>
             </div>
-            <div class="bg-white rounded-xl shadow-lg p-6 dark:bg-slate-800">
-                <h2 class="text-xl font-semibold mb-4 dark:text-gray-100">Углеводы и инсулин (7 дней)</h2>
-                <div class="chart-container h-64">
-                    <canvas id="carbsInsulinChartCanvas"></canvas>
+
+            <!-- Месячная аналитика -->
+            <div class="space-y-6">
+                <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">Аналитика за месяц</h2>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-xl shadow-lg p-6 dark:bg-slate-800">
+                        <h3 class="text-xl font-semibold mb-4 dark:text-gray-100">Средний уровень глюкозы</h3>
+                        <div class="chart-container h-64">
+                            <canvas id="monthGlucoseChartCanvas"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-lg p-6 dark:bg-slate-800">
+                        <h3 class="text-xl font-semibold mb-4 dark:text-gray-100">Углеводы и инсулин</h3>
+                        <div class="chart-container h-64">
+                            <canvas id="monthCarbsInsulinChartCanvas"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-lg p-6 dark:bg-slate-800">
+                        <h3 class="text-xl font-semibold mb-4 dark:text-gray-100">Активность</h3>
+                        <div class="chart-container h-64">
+                            <canvas id="monthActivityChartCanvas"></canvas>
+                        </div>
+                    </div>
+                    <div id="monthSummaryContainer" class="bg-white rounded-xl shadow-lg p-6 dark:bg-slate-800">
+                        <h3 class="text-xl font-semibold mb-4 dark:text-gray-100">Сводка</h3>
+                        <!-- Сводка будет вставлена сюда -->
+                    </div>
                 </div>
-            </div>
-            <div class="bg-white rounded-xl shadow-lg p-6 dark:bg-slate-800">
-                <h2 class="text-xl font-semibold mb-4 dark:text-gray-100">Активность за неделю</h2>
-                <div class="chart-container h-64">
-                    <canvas id="activityChartCanvas"></canvas>
-                </div>
-            </div>
-            <div id="weekSummaryContainer" class="bg-white rounded-xl shadow-lg p-6 dark:bg-slate-800">
-                <h2 class="text-xl font-semibold mb-4 dark:text-gray-100">Сводка за неделю</h2>
-                <!-- Сводка будет вставлена сюда -->
             </div>
         </div>
 
@@ -803,11 +950,11 @@
         let currentTheme = localStorage.getItem('diabetesAppTheme') || 'light';
         
         let products = JSON.parse(localStorage.getItem('diabetesAppProducts')) || [
-            { id: 1, name: 'Хлеб белый', carbs: 12, insulinRatio: 1 }, // Default carbs per 100g, not per XE
-            { id: 2, name: 'Рис отварной', carbs: 25, insulinRatio: 2 },
-            { id: 3, name: 'Картофель', carbs: 16, insulinRatio: 1.5 },
-            { id: 4, name: 'Яблоко среднее', carbs: 15, insulinRatio: 1 },
-            { id: 5, name: 'Молоко', carbs: 5, insulinRatio: 0.5 }
+            { id: 1, name: 'Хлеб белый', carbs: 50, insulinRatio: 1 }, // Corrected: carbs are per 100g. 1XE ~ 12g carbs. e.g. 50g carbs/100g bread.
+            { id: 2, name: 'Рис отварной', carbs: 28, insulinRatio: 1.5 },
+            { id: 3, name: 'Картофель отварной', carbs: 16, insulinRatio: 1 },
+            { id: 4, name: 'Яблоко среднее (150г)', carbs: 14, insulinRatio: 0.5 }, // per 100g of apple
+            { id: 5, name: 'Молоко 3.2%', carbs: 4.7, insulinRatio: 0.25 }
         ];
         let meals = JSON.parse(localStorage.getItem('diabetesAppMeals')) || {};
         let glucoseRecords = JSON.parse(localStorage.getItem('diabetesAppGlucoseRecords')) || {};
@@ -819,6 +966,7 @@
 
         // Chart instances
         let dayGlucoseChartInstance, weekGlucoseChartInstance, carbsInsulinChartInstance, activityChartInstance;
+        let monthGlucoseChartInstance, monthCarbsInsulinChartInstance, monthActivityChartInstance;
 
         const monthNames = [
             'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
@@ -831,7 +979,7 @@
         const analyticsViewEl = document.getElementById('analyticsView');
         const reportsViewEl = document.getElementById('reportsView');
         const productsViewEl = document.getElementById('productsView');
-        const calculatorViewEl = document.getElementById('calculatorView'); // New
+        const calculatorViewEl = document.getElementById('calculatorView'); 
         const viewContents = document.querySelectorAll('.view-content');
 
         const calendarHeaderEl = document.getElementById('calendarHeader');
@@ -852,21 +1000,31 @@
         // Theme Toggle
         const darkModeToggleBtn = document.getElementById('darkModeToggle');
 
+        // --- DOM Elements for Prediction (New) ---
+        const predictedSugarSectionEl = document.getElementById('predictedSugarSection');
+        const predictedSugarDisplayEl = document.getElementById('predictedSugarDisplay');
+        const predictionContextEl = document.getElementById('predictionContext');
+        const correctPredictionBtnEl = document.getElementById('correctPredictionBtn');
+
 
         // --- THEME FUNCTIONS ---
         function applyTheme(theme) {
             if (theme === 'dark') {
                 document.documentElement.classList.add('dark');
                 darkModeToggleBtn.innerHTML = `<i data-lucide="moon" class="w-6 h-6 text-blue-400"></i>`;
-                document.getElementById('calculatorHost').style.backgroundColor = '#1e293b'; // dark:bg-slate-800
-                document.getElementById('calculatorHost').style.color = '#e2e8f0'; // dark:text-slate-200 (approx)
+                if(document.getElementById('calculatorHost')) { // Check if calculatorHost exists
+                    document.getElementById('calculatorHost').style.backgroundColor = '#1e293b'; 
+                    document.getElementById('calculatorHost').style.color = '#e2e8f0'; 
+                }
             } else {
                 document.documentElement.classList.remove('dark');
                 darkModeToggleBtn.innerHTML = `<i data-lucide="sun" class="w-6 h-6 text-yellow-500"></i>`;
-                document.getElementById('calculatorHost').style.backgroundColor = '#f0f4f8'; // Original light bg
-                document.getElementById('calculatorHost').style.color = '#333'; // Original light text
+                 if(document.getElementById('calculatorHost')) { // Check if calculatorHost exists
+                    document.getElementById('calculatorHost').style.backgroundColor = '#f0f4f8';
+                    document.getElementById('calculatorHost').style.color = '#333'; 
+                }
             }
-            currentTheme = theme; // Update global state
+            currentTheme = theme; 
             localStorage.setItem('diabetesAppTheme', theme);
             lucide.createIcons();
             updateChartColors(theme);
@@ -927,7 +1085,7 @@
         
         function calculateMealStats(mealProducts) {
             let totalCarbs = 0;
-            let totalInsulin = 0;
+            let totalInsulin = 0; // Calculated insulin based on product ratios
 
             mealProducts.forEach(item => {
                 const productDetails = products.find(p => p.id === item.id);
@@ -935,16 +1093,17 @@
 
                 const carbsPer100g = productDetails.carbs;
                 const actualCarbs = (carbsPer100g * item.amount) / 100;
-                const breadUnits = actualCarbs / 12; // Standard 1 XE = 12g carbs
+                const breadUnits = actualCarbs / 12; // Standard 1 XE = 12g carbs, can be adjusted
                 
                 totalCarbs += actualCarbs;
+                // Insulin calculation for 'calculated insulin' uses product's insulinRatio (units per XE)
                 totalInsulin += breadUnits * productDetails.insulinRatio;
             });
 
             return {
                 carbs: totalCarbs.toFixed(1),
-                breadUnits: (totalCarbs / 12).toFixed(1),
-                insulin: totalInsulin.toFixed(1)
+                breadUnits: (totalCarbs / 12).toFixed(1), // Assuming 1 XE = 12g carbs
+                insulin: totalInsulin.toFixed(1) // This is calculated insulin based on product's ratio
             };
         }
 
@@ -968,6 +1127,147 @@
         function formatDate(dateString) {
             return new Date(dateString).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
         }
+
+        // --- PREDICTION LOGIC (NEW) ---
+        function calculateSugarPredictionLogic(currentSugar, carbs, insulinDose, carbRatio, sensitivityFactor, mealType = 'balanced', activityLevel = 'none') {
+            if (currentSugar === null || isNaN(carbs) || isNaN(insulinDose) || !carbRatio || !sensitivityFactor) {
+                return null;
+            }
+            
+            let carbAbsorptionFactor = 1.0;
+            switch (mealType) {
+                case 'fast': carbAbsorptionFactor = 1.1; break;
+                case 'balanced': carbAbsorptionFactor = 1.0; break;
+                case 'slow': carbAbsorptionFactor = 0.80; break;
+            }
+
+            let activityEffectOnSugar = 0;
+            switch (activityLevel) {
+                case 'none': activityEffectOnSugar = 0; break;
+                case 'light': activityEffectOnSugar = -0.8; break;
+                case 'moderate': activityEffectOnSugar = -2.0; break;
+            }
+
+            const sugarIncreaseFromCarbs = ((carbs * carbAbsorptionFactor) / 10) * carbRatio * sensitivityFactor;
+            const sugarDecreaseFromActualInsulin = insulinDose * sensitivityFactor;
+
+            let predictedSugar = currentSugar + sugarIncreaseFromCarbs - sugarDecreaseFromActualInsulin + activityEffectOnSugar;
+
+            if (predictedSugar < 0.5) predictedSugar = 0.5;
+            if (predictedSugar > 40.0) predictedSugar = 40.0;
+
+            return predictedSugar;
+        }
+
+        function findSugarBeforeMeal(dateStr, mealTimeStr) {
+            const dayGlucose = getDayGlucose(dateStr)
+                .filter(r => r.time < mealTimeStr)
+                .sort((a, b) => b.time.localeCompare(a.time)); 
+            
+            if (dayGlucose.length > 0) {
+                const latestGlucoseBeforeMeal = dayGlucose[0];
+                const mealDateTime = new Date(`${dateStr}T${mealTimeStr}`);
+                const glucoseDateTime = new Date(`${dateStr}T${latestGlucoseBeforeMeal.time}`);
+                const diffMinutes = (mealDateTime - glucoseDateTime) / (1000 * 60);
+
+                if (diffMinutes <= 90 && diffMinutes >= 0) { // Up to 1.5 hours before meal
+                    return latestGlucoseBeforeMeal.glucose;
+                }
+            }
+            return null;
+        }
+
+        function isPredictionSuperseded(dateStr, mealTimeStr) {
+            const dayGlucoseAfterMeal = getDayGlucose(dateStr)
+                .filter(r => r.time > mealTimeStr)
+                .sort((a, b) => a.time.localeCompare(b.time)); 
+            
+            if (dayGlucoseAfterMeal.length === 0) return false;
+
+            const mealDateTime = new Date(`${dateStr}T${mealTimeStr}`);
+            const firstGlucoseAfterMealTime = new Date(`${dateStr}T${dayGlucoseAfterMeal[0].time}`);
+            const currentTime = new Date();
+            const predictionWindowEnd = new Date(mealDateTime.getTime() + 4 * 60 * 60 * 1000); // 4 hour window
+
+            if (firstGlucoseAfterMealTime < predictionWindowEnd) {
+                if (dateStr === new Date().toISOString().split('T')[0]) { // Today
+                    return firstGlucoseAfterMealTime <= currentTime;
+                }
+                return true; // For past days, any glucose after meal in this window supersedes
+            }
+            return false;
+        }
+
+        function renderPredictedCurrentSugar() {
+            if (!predictedSugarSectionEl || !predictedSugarDisplayEl || !predictionContextEl) {
+                console.error("Prediction UI elements not found.");
+                return;
+            }
+
+            predictedSugarSectionEl.style.display = 'none'; // Default to hidden
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            if (selectedDate !== todayStr) {
+                return; 
+            }
+
+            const dayMealsData = getDayMeals(selectedDate).sort((a, b) => b.time.localeCompare(a.time)); 
+            if (dayMealsData.length === 0) {
+                return; 
+            }
+            const latestMeal = dayMealsData[0];
+
+            const mealDateTime = new Date(`${selectedDate}T${latestMeal.time}`);
+            const currentTime = new Date();
+            const hoursSinceMeal = (currentTime - mealDateTime) / (1000 * 60 * 60);
+
+            if (hoursSinceMeal < 0 || hoursSinceMeal > 4) { 
+                return;
+            }
+            
+            if (isPredictionSuperseded(selectedDate, latestMeal.time)) {
+                return; 
+            }
+
+            const sugarBeforeMeal = findSugarBeforeMeal(selectedDate, latestMeal.time);
+            if (sugarBeforeMeal === null) {
+                predictionContextEl.textContent = `Для прогноза нужно измерение сахара не более чем за 1.5ч до еды (${latestMeal.time}).`;
+                predictedSugarDisplayEl.textContent = '---';
+                predictedSugarSectionEl.style.display = 'block';
+                lucide.createIcons();
+                return;
+            }
+
+            const mealStats = calculateMealStats(latestMeal.products);
+            const totalCarbs = parseFloat(mealStats.carbs);
+            const actualInsulin = latestMeal.actualInsulin || 0; 
+
+            const carbRatio = parseFloat(localStorage.getItem(CR_KEY));
+            const sensitivityFactor = parseFloat(localStorage.getItem(SF_KEY));
+
+            if (isNaN(carbRatio) || isNaN(sensitivityFactor)) {
+                predictionContextEl.textContent = "Коэффициенты УК и ФЧИ не настроены в Калькуляторе.";
+                predictedSugarDisplayEl.textContent = '---';
+                predictedSugarSectionEl.style.display = 'block';
+                lucide.createIcons();
+                return;
+            }
+            
+            const predictedSugar = calculateSugarPredictionLogic(sugarBeforeMeal, totalCarbs, actualInsulin, carbRatio, sensitivityFactor);
+
+            if (predictedSugar !== null) {
+                predictedSugarDisplayEl.innerHTML = `<span class="${getGlucoseColor(predictedSugar)}">${predictedSugar.toFixed(1)} ммоль/л</span> <span class="text-base font-normal text-gray-500 dark:text-gray-400">(прогноз)</span>`;
+                const predictionValidUntil = new Date(mealDateTime.getTime() + 3 * 60 * 60 * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                predictionContextEl.textContent = `На основе: ${latestMeal.time} (до: ${sugarBeforeMeal} ммоль/л, ${totalCarbs.toFixed(0)}г У, ${actualInsulin.toFixed(1)} ед И). Актуально до ~${predictionValidUntil}.`;
+                predictedSugarSectionEl.style.display = 'block';
+            } else {
+                predictionContextEl.textContent = "Недостаточно данных для прогноза.";
+                predictedSugarDisplayEl.textContent = '---';
+                predictedSugarSectionEl.style.display = 'block';
+            }
+            lucide.createIcons();
+        }
+
 
         // --- RENDER FUNCTIONS ---
 
@@ -995,10 +1295,10 @@
             const currentViewEl = document.getElementById(`${currentView}View`);
             if (currentViewEl) {
                  currentViewEl.style.display = (currentView === 'calendar' || currentView === 'analytics') ? 'grid' : 'block';
-                 if (currentView === 'calculator') { // Special handling for calculator
-                     currentViewEl.style.display = 'block'; // Its content is handled by #calculatorHost
+                 if (currentView === 'calculator') { 
+                     currentViewEl.style.display = 'block'; 
                      if (typeof loadSettingsToCalcForm === 'function') {
-                         loadSettingsToCalcForm(); // Load calculator settings when its view is shown
+                         loadSettingsToCalcForm(); 
                      }
                  }
             }
@@ -1019,13 +1319,10 @@
                     renderProductsView();
                     break;
                 case 'calculator':
-                    // Specific rendering for calculator is mostly its own HTML/CSS.
-                    // `loadSettingsToCalcForm` is called above.
-                    // We need to ensure calculator's popups are above diary's modals if they ever overlap
-                    // (calculator popups have z-index 1000, diary modals z-index 50 - calculator is higher)
+                    // Already handled above
                     break; 
             }
-            lucide.createIcons(); // Re-create icons for the current view
+            lucide.createIcons(); 
         }
 
         function generateCalendarDays() {
@@ -1097,7 +1394,7 @@
         function renderDayMeals() {
             mealsHeaderEl.textContent = `Питание ${formatDate(selectedDate)}`;
             dayMealsContainerEl.innerHTML = '';
-            const dayMealsData = getDayMeals(selectedDate);
+            const dayMealsData = getDayMeals(selectedDate).sort((a, b) => b.time.localeCompare(a.time)); // Изменен порядок сортировки
 
             if (dayMealsData.length === 0) {
                 dayMealsContainerEl.innerHTML = `
@@ -1150,7 +1447,7 @@
         function renderDayGlucose() {
             glucoseHeaderEl.textContent = `Глюкоза ${formatDate(selectedDate)}`;
             dayGlucoseContainerEl.innerHTML = '';
-            const dayGlucoseData = getDayGlucose(selectedDate);
+            const dayGlucoseData = getDayGlucose(selectedDate).sort((a, b) => b.time.localeCompare(a.time)); // Изменен порядок сортировки
 
             if (dayGlucoseData.length === 0) {
                 dayGlucoseContainerEl.innerHTML = `
@@ -1235,6 +1532,32 @@
             renderCalendarGrid();
             renderDayMeals();
             renderDayGlucose();
+            renderPredictedCurrentSugar();
+            renderDaySummary(); // Добавляем вызов новой функции
+        }
+
+        function renderDaySummary() {
+            const dayMealsData = getDayMeals(selectedDate);
+            const dayGlucoseData = getDayGlucose(selectedDate);
+            
+            let totalCarbs = 0;
+            let totalInsulin = 0;
+            
+            dayMealsData.forEach(meal => {
+                const stats = calculateMealStats(meal.products);
+                totalCarbs += parseFloat(stats.carbs);
+                totalInsulin += meal.actualInsulin || parseFloat(stats.insulin) || 0;
+            });
+            
+            let avgGlucose = 0;
+            if (dayGlucoseData.length > 0) {
+                avgGlucose = dayGlucoseData.reduce((sum, record) => sum + record.glucose, 0) / dayGlucoseData.length;
+            }
+            
+            document.getElementById('dayTotalCarbs').textContent = `${Math.round(totalCarbs)}г`;
+            document.getElementById('dayTotalInsulin').textContent = `${Math.round(totalInsulin * 10) / 10} ед`;
+            document.getElementById('dayAvgGlucose').textContent = avgGlucose > 0 ? `${Math.round(avgGlucose * 10) / 10}` : '-';
+            document.getElementById('dayMealsCount').textContent = dayMealsData.length;
         }
 
         // --- Products View Functions ---
@@ -1302,8 +1625,10 @@
         // --- Analytics View Functions ---
         function renderAnalyticsView() {
             const weekData = getWeekData();
+            const monthData = getMonthData();
             const isDark = currentTheme === 'dark';
 
+            // Недельные графики
             const weekGlucoseCtx = document.getElementById('weekGlucoseChartCanvas').getContext('2d');
             if (weekGlucoseChartInstance) weekGlucoseChartInstance.destroy();
             weekGlucoseChartInstance = new Chart(weekGlucoseCtx, {
@@ -1351,15 +1676,85 @@
                 options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
             });
 
-            const summaryContainer = document.getElementById('weekSummaryContainer');
+            // Месячные графики
+            const monthGlucoseCtx = document.getElementById('monthGlucoseChartCanvas').getContext('2d');
+            if (monthGlucoseChartInstance) monthGlucoseChartInstance.destroy();
+            monthGlucoseChartInstance = new Chart(monthGlucoseCtx, {
+                type: 'line', 
+                data: {
+                    labels: monthData.map(d => d.date),
+                    datasets: [{
+                        label: 'Средняя глюкоза',
+                        data: monthData.map(d => d.glucose > 0 ? d.glucose : null), 
+                        borderColor: isDark ? '#f87171' : '#ef4444', 
+                        backgroundColor: isDark ? 'rgba(248, 113, 113, 0.3)' : '#fecaca', 
+                        fill: true,
+                        tension: 0.1,
+                        borderWidth: 2
+                    }]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    scales: { 
+                        y: { beginAtZero: false, min: 3, max: 15 },
+                        x: { ticks: { maxRotation: 45, minRotation: 45 } }
+                    }, 
+                    plugins: { tooltip: {callbacks: {label: (ctx) => `${ctx.raw} ммоль/л`}} }
+                }
+            });
+
+            const monthCarbsInsulinCtx = document.getElementById('monthCarbsInsulinChartCanvas').getContext('2d');
+            if (monthCarbsInsulinChartInstance) monthCarbsInsulinChartInstance.destroy();
+            monthCarbsInsulinChartInstance = new Chart(monthCarbsInsulinCtx, {
+                type: 'bar',
+                data: {
+                    labels: monthData.map(d => d.date),
+                    datasets: [
+                        { label: 'Углеводы (г)', data: monthData.map(d => d.carbs), backgroundColor: isDark ? '#60a5fa' : '#3b82f6' }, 
+                        { label: 'Инсулин (ед)', data: monthData.map(d => d.insulin), backgroundColor: isDark ? '#34d399' : '#10b981' } 
+                    ]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    scales: { 
+                        y: { beginAtZero: true },
+                        x: { ticks: { maxRotation: 45, minRotation: 45 } }
+                    }
+                }
+            });
+            
+            const monthActivityCtx = document.getElementById('monthActivityChartCanvas').getContext('2d');
+            if (monthActivityChartInstance) monthActivityChartInstance.destroy();
+            monthActivityChartInstance = new Chart(monthActivityCtx, {
+                type: 'bar',
+                data: {
+                    labels: monthData.map(d => d.date),
+                    datasets: [
+                        { label: 'Приемы пищи', data: monthData.map(d => d.mealsCount), backgroundColor: isDark ? '#fbbf24' : '#f59e0b' }, 
+                        { label: 'Измерения глюкозы', data: monthData.map(d => d.glucoseCount), backgroundColor: isDark ? '#f87171' : '#ef4444' } 
+                    ]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    scales: { 
+                        y: { beginAtZero: true, ticks: { stepSize: 1 } },
+                        x: { ticks: { maxRotation: 45, minRotation: 45 } }
+                    }
+                }
+            });
+
+            // Недельная сводка
+            const weekSummaryContainer = document.getElementById('weekSummaryContainer');
             const totalCarbs = weekData.reduce((sum, day) => sum + day.carbs, 0);
             const totalInsulin = Math.round(weekData.reduce((sum, day) => sum + day.insulin, 0) * 10) / 10;
             const validGlucoseDays = weekData.filter(d => d.glucose > 0);
             const avgGlucoseWeek = validGlucoseDays.length > 0 ? Math.round(validGlucoseDays.reduce((sum, day) => sum + day.glucose, 0) / validGlucoseDays.length * 10) / 10 : 0;
             const totalMealsWeek = weekData.reduce((sum, day) => sum + day.mealsCount, 0);
 
-            summaryContainer.innerHTML = `
-                <h2 class="text-xl font-semibold mb-4 dark:text-gray-100">Сводка за неделю</h2>
+            weekSummaryContainer.innerHTML = `
                 <div class="grid grid-cols-2 gap-4">
                     <div class="bg-blue-50 rounded-lg p-4 dark:bg-slate-700">
                         <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">${totalCarbs}г</div>
@@ -1375,6 +1770,35 @@
                     </div>
                     <div class="bg-yellow-50 rounded-lg p-4 dark:bg-slate-700">
                         <div class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">${totalMealsWeek}</div>
+                        <div class="text-sm text-yellow-600 dark:text-yellow-400">Всего приемов пищи</div>
+                    </div>
+                </div>
+            `;
+
+            // Месячная сводка
+            const monthSummaryContainer = document.getElementById('monthSummaryContainer');
+            const monthTotalCarbs = monthData.reduce((sum, day) => sum + day.carbs, 0);
+            const monthTotalInsulin = Math.round(monthData.reduce((sum, day) => sum + day.insulin, 0) * 10) / 10;
+            const monthValidGlucoseDays = monthData.filter(d => d.glucose > 0);
+            const monthAvgGlucose = monthValidGlucoseDays.length > 0 ? Math.round(monthValidGlucoseDays.reduce((sum, day) => sum + day.glucose, 0) / monthValidGlucoseDays.length * 10) / 10 : 0;
+            const monthTotalMeals = monthData.reduce((sum, day) => sum + day.mealsCount, 0);
+
+            monthSummaryContainer.innerHTML = `
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-blue-50 rounded-lg p-4 dark:bg-slate-700">
+                        <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">${monthTotalCarbs}г</div>
+                        <div class="text-sm text-blue-600 dark:text-blue-400">Общие углеводы</div>
+                    </div>
+                    <div class="bg-green-50 rounded-lg p-4 dark:bg-slate-700">
+                        <div class="text-2xl font-bold text-green-600 dark:text-green-400">${monthTotalInsulin} ед</div>
+                        <div class="text-sm text-green-600 dark:text-green-400">Общий инсулин</div>
+                    </div>
+                    <div class="bg-red-50 rounded-lg p-4 dark:bg-slate-700">
+                        <div class="text-2xl font-bold text-red-600 dark:text-red-400">${monthAvgGlucose || 0}</div>
+                        <div class="text-sm text-red-600 dark:text-red-400">Средняя глюкоза</div>
+                    </div>
+                    <div class="bg-yellow-50 rounded-lg p-4 dark:bg-slate-700">
+                        <div class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">${monthTotalMeals}</div>
                         <div class="text-sm text-yellow-600 dark:text-yellow-400">Всего приемов пищи</div>
                     </div>
                 </div>
@@ -1467,6 +1891,7 @@
                 }
                 saveData();
                 if (currentView === 'products') renderProductsView();
+                if (currentView === 'calendar') renderNewMealProductOptions(); // Update meal modal dropdown
                 lucide.createIcons(); 
                 closeModal(addProductModalEl);
             } else {
@@ -1493,6 +1918,7 @@
                 products = products.filter(p => p.id !== id);
                 saveData();
                 if (currentView === 'products') renderProductsView();
+                if (currentView === 'calendar') renderNewMealProductOptions(); // Update meal modal dropdown
                 lucide.createIcons();
             }
         }
@@ -1663,6 +2089,58 @@
         });
 
         darkModeToggleBtn.addEventListener('click', toggleTheme);
+        
+        if (correctPredictionBtnEl) {
+            correctPredictionBtnEl.addEventListener('click', () => {
+                const nowTime = new Date().toTimeString().substring(0,5);
+                document.getElementById('addGlucoseForm').reset();
+                document.getElementById('newGlucoseTime').value = nowTime;
+                document.getElementById('newGlucoseType').value = 'random'; 
+                openModal(addGlucoseModalEl);
+            });
+        }
+
+        // Добавим функцию для получения месячных данных
+        function getMonthData() {
+            const data = [];
+            const today = new Date();
+            const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+            const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            
+            for (let i = 0; i < lastDayOfMonth.getDate(); i++) {
+                const date = new Date(firstDayOfMonth);
+                date.setDate(date.getDate() + i);
+                const dateStr = date.toISOString().split('T')[0];
+                
+                const dayMealsData = getDayMeals(dateStr);
+                const dayGlucoseData = getDayGlucose(dateStr);
+                
+                let totalCarbs = 0;
+                let totalInsulin = 0;
+                
+                dayMealsData.forEach(meal => {
+                    const stats = calculateMealStats(meal.products);
+                    totalCarbs += parseFloat(stats.carbs);
+                    totalInsulin += meal.actualInsulin || parseFloat(stats.insulin) || 0;
+                });
+                
+                let avgGlucose = 0;
+                if (dayGlucoseData.length > 0) {
+                    avgGlucose = dayGlucoseData.reduce((sum, record) => sum + record.glucose, 0) / dayGlucoseData.length;
+                }
+                
+                data.push({
+                    date: date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }),
+                    fullDate: dateStr,
+                    carbs: Math.round(totalCarbs),
+                    insulin: Math.round(totalInsulin * 10) / 10,
+                    glucose: avgGlucose > 0 ? Math.round(avgGlucose * 10) / 10 : 0,
+                    mealsCount: dayMealsData.length,
+                    glucoseCount: dayGlucoseData.length
+                });
+            }
+            return data;
+        }
 
         // --- INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', () => {
