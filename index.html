@@ -321,6 +321,19 @@
                 <div id="calendarGrid" class="grid grid-cols-7 gap-2">
                     <!-- Дни -->
                 </div>
+                 <!-- Export/Import Buttons -->
+                 <div class="mt-6 flex space-x-2 justify-center">
+                    <button id="exportDayDataBtn" class="bg-purple-500 text-white px-3 py-1.5 rounded-lg hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700 transition-colors flex items-center text-xs sm:text-sm">
+                        <i data-lucide="download" class="w-4 h-4 mr-1.5"></i> Экспорт дня
+                    </button>
+                    <button id="importDataBtn" class="bg-teal-500 text-white px-3 py-1.5 rounded-lg hover:bg-teal-600 dark:bg-teal-600 dark:hover:bg-teal-700 transition-colors flex items-center text-xs sm:text-sm">
+                        <i data-lucide="upload" class="w-4 h-4 mr-1.5"></i> Импорт
+                    </button>
+                    <button id="exportAllDataBtn" class="bg-orange-500 text-white px-3 py-1.5 rounded-lg hover:bg-orange-600 dark:bg-orange-600 dark:hover:bg-orange-700 transition-colors flex items-center text-xs sm:text-sm">
+                        <i data-lucide="archive" class="w-4 h-4 mr-1.5"></i> Экспорт всех
+                    </button>
+                </div>
+                <input type="file" id="importFile" accept=".json" style="display: none;">
             </div>
 
             <!-- Right panel for selected day's details (takes 2/3 width on XL, stacking content vertically) -->
@@ -603,7 +616,7 @@
                         
                         <h4 id="popupTitle">Заголовок подсказки</h4>
                         <div id="popupText">Текст подсказки здесь...</div>
-                        <button class="popup-close-btn" onclick="hidePopup()">&times;</button>
+                        <button class="popup-close-btn" onclick="hidePopup()">×</button>
                     </div>
                     
                 </div>
@@ -950,17 +963,17 @@
         let currentTheme = localStorage.getItem('diabetesAppTheme') || 'light';
         
         let products = JSON.parse(localStorage.getItem('diabetesAppProducts')) || [
-            { id: 1, name: 'Хлеб белый', carbs: 50, insulinRatio: 1 }, // Corrected: carbs are per 100g. 1XE ~ 12g carbs. e.g. 50g carbs/100g bread.
+            { id: 1, name: 'Хлеб белый', carbs: 50, insulinRatio: 1 }, 
             { id: 2, name: 'Рис отварной', carbs: 28, insulinRatio: 1.5 },
             { id: 3, name: 'Картофель отварной', carbs: 16, insulinRatio: 1 },
-            { id: 4, name: 'Яблоко среднее (150г)', carbs: 14, insulinRatio: 0.5 }, // per 100g of apple
+            { id: 4, name: 'Яблоко', carbs: 14, insulinRatio: 0.5 }, // per 100g
             { id: 5, name: 'Молоко 3.2%', carbs: 4.7, insulinRatio: 0.25 }
         ];
         let meals = JSON.parse(localStorage.getItem('diabetesAppMeals')) || {};
         let glucoseRecords = JSON.parse(localStorage.getItem('diabetesAppGlucoseRecords')) || {};
 
-        let editingProductId = null; // For editing products
-        let newMealFormState = { // For "Add Meal" modal
+        let editingProductId = null; 
+        let newMealFormState = { 
             products: []
         };
 
@@ -1012,14 +1025,14 @@
             if (theme === 'dark') {
                 document.documentElement.classList.add('dark');
                 darkModeToggleBtn.innerHTML = `<i data-lucide="moon" class="w-6 h-6 text-blue-400"></i>`;
-                if(document.getElementById('calculatorHost')) { // Check if calculatorHost exists
+                if(document.getElementById('calculatorHost')) { 
                     document.getElementById('calculatorHost').style.backgroundColor = '#1e293b'; 
                     document.getElementById('calculatorHost').style.color = '#e2e8f0'; 
                 }
             } else {
                 document.documentElement.classList.remove('dark');
                 darkModeToggleBtn.innerHTML = `<i data-lucide="sun" class="w-6 h-6 text-yellow-500"></i>`;
-                 if(document.getElementById('calculatorHost')) { // Check if calculatorHost exists
+                 if(document.getElementById('calculatorHost')) { 
                     document.getElementById('calculatorHost').style.backgroundColor = '#f0f4f8';
                     document.getElementById('calculatorHost').style.color = '#333'; 
                 }
@@ -1060,6 +1073,23 @@
                 activityChartInstance.data.datasets[1].backgroundColor = isDark ? '#f87171' : '#ef4444'; 
                 activityChartInstance.update('none');
             }
+             // Update month charts as well
+            if (monthGlucoseChartInstance) {
+                const ds = monthGlucoseChartInstance.data.datasets[0];
+                ds.borderColor = isDark ? '#f87171' : '#ef4444';
+                ds.backgroundColor = isDark ? 'rgba(248, 113, 113, 0.3)' : '#fecaca';
+                monthGlucoseChartInstance.update('none');
+            }
+            if (monthCarbsInsulinChartInstance) {
+                monthCarbsInsulinChartInstance.data.datasets[0].backgroundColor = isDark ? '#60a5fa' : '#3b82f6';
+                monthCarbsInsulinChartInstance.data.datasets[1].backgroundColor = isDark ? '#34d399' : '#10b981';
+                monthCarbsInsulinChartInstance.update('none');
+            }
+            if (monthActivityChartInstance) {
+                monthActivityChartInstance.data.datasets[0].backgroundColor = isDark ? '#fbbf24' : '#f59e0b';
+                monthActivityChartInstance.data.datasets[1].backgroundColor = isDark ? '#f87171' : '#ef4444';
+                monthActivityChartInstance.update('none');
+            }
         }
 
         function toggleTheme() {
@@ -1085,7 +1115,7 @@
         
         function calculateMealStats(mealProducts) {
             let totalCarbs = 0;
-            let totalInsulin = 0; // Calculated insulin based on product ratios
+            let totalInsulin = 0; 
 
             mealProducts.forEach(item => {
                 const productDetails = products.find(p => p.id === item.id);
@@ -1093,17 +1123,16 @@
 
                 const carbsPer100g = productDetails.carbs;
                 const actualCarbs = (carbsPer100g * item.amount) / 100;
-                const breadUnits = actualCarbs / 12; // Standard 1 XE = 12g carbs, can be adjusted
+                const breadUnits = actualCarbs / 12; 
                 
                 totalCarbs += actualCarbs;
-                // Insulin calculation for 'calculated insulin' uses product's insulinRatio (units per XE)
                 totalInsulin += breadUnits * productDetails.insulinRatio;
             });
 
             return {
                 carbs: totalCarbs.toFixed(1),
-                breadUnits: (totalCarbs / 12).toFixed(1), // Assuming 1 XE = 12g carbs
-                insulin: totalInsulin.toFixed(1) // This is calculated insulin based on product's ratio
+                breadUnits: (totalCarbs / 12).toFixed(1),
+                insulin: totalInsulin.toFixed(1)
             };
         }
 
@@ -1124,8 +1153,20 @@
             }
         }
         
-        function formatDate(dateString) {
-            return new Date(dateString).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        // Corrected formatDate function
+        function formatDate(dateString) { // dateString is YYYY-MM-DD
+            if (!dateString) return '';
+            const parts = dateString.split('-');
+            if (parts.length !== 3) return dateString; // Fallback for invalid format
+
+            const year = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed for Date constructor
+            const day = parseInt(parts[2], 10);
+            
+            // Create a date object using local timezone components
+            const localDate = new Date(year, month, day);
+            
+            return localDate.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
         }
 
         // --- PREDICTION LOGIC (NEW) ---
@@ -1170,7 +1211,7 @@
                 const glucoseDateTime = new Date(`${dateStr}T${latestGlucoseBeforeMeal.time}`);
                 const diffMinutes = (mealDateTime - glucoseDateTime) / (1000 * 60);
 
-                if (diffMinutes <= 90 && diffMinutes >= 0) { // Up to 1.5 hours before meal
+                if (diffMinutes <= 90 && diffMinutes >= 0) { 
                     return latestGlucoseBeforeMeal.glucose;
                 }
             }
@@ -1187,13 +1228,13 @@
             const mealDateTime = new Date(`${dateStr}T${mealTimeStr}`);
             const firstGlucoseAfterMealTime = new Date(`${dateStr}T${dayGlucoseAfterMeal[0].time}`);
             const currentTime = new Date();
-            const predictionWindowEnd = new Date(mealDateTime.getTime() + 4 * 60 * 60 * 1000); // 4 hour window
+            const predictionWindowEnd = new Date(mealDateTime.getTime() + 4 * 60 * 60 * 1000); 
 
             if (firstGlucoseAfterMealTime < predictionWindowEnd) {
-                if (dateStr === new Date().toISOString().split('T')[0]) { // Today
+                if (dateStr === new Date().toISOString().split('T')[0]) { 
                     return firstGlucoseAfterMealTime <= currentTime;
                 }
-                return true; // For past days, any glucose after meal in this window supersedes
+                return true; 
             }
             return false;
         }
@@ -1204,7 +1245,7 @@
                 return;
             }
 
-            predictedSugarSectionEl.style.display = 'none'; // Default to hidden
+            predictedSugarSectionEl.style.display = 'none'; 
 
             const todayStr = new Date().toISOString().split('T')[0];
             if (selectedDate !== todayStr) {
@@ -1394,7 +1435,7 @@
         function renderDayMeals() {
             mealsHeaderEl.textContent = `Питание ${formatDate(selectedDate)}`;
             dayMealsContainerEl.innerHTML = '';
-            const dayMealsData = getDayMeals(selectedDate).sort((a, b) => b.time.localeCompare(a.time)); // Изменен порядок сортировки
+            const dayMealsData = getDayMeals(selectedDate).sort((a, b) => b.time.localeCompare(a.time)); 
 
             if (dayMealsData.length === 0) {
                 dayMealsContainerEl.innerHTML = `
@@ -1447,7 +1488,7 @@
         function renderDayGlucose() {
             glucoseHeaderEl.textContent = `Глюкоза ${formatDate(selectedDate)}`;
             dayGlucoseContainerEl.innerHTML = '';
-            const dayGlucoseData = getDayGlucose(selectedDate).sort((a, b) => b.time.localeCompare(a.time)); // Изменен порядок сортировки
+            const dayGlucoseData = getDayGlucose(selectedDate).sort((a, b) => b.time.localeCompare(a.time));
 
             if (dayGlucoseData.length === 0) {
                 dayGlucoseContainerEl.innerHTML = `
@@ -1533,7 +1574,8 @@
             renderDayMeals();
             renderDayGlucose();
             renderPredictedCurrentSugar();
-            renderDaySummary(); // Добавляем вызов новой функции
+            renderDaySummary(); 
+            lucide.createIcons(); // Ensure icons for export/import buttons are rendered
         }
 
         function renderDaySummary() {
@@ -1610,7 +1652,7 @@
                 }
                 
                 data.push({
-                    date: date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }),
+                    date: formatDate(dateStr).substring(0,5), // Use dd.mm for labels
                     fullDate: dateStr,
                     carbs: Math.round(totalCarbs),
                     insulin: Math.round(totalInsulin * 10) / 10,
@@ -1698,7 +1740,7 @@
                     maintainAspectRatio: false, 
                     scales: { 
                         y: { beginAtZero: false, min: 3, max: 15 },
-                        x: { ticks: { maxRotation: 45, minRotation: 45 } }
+                        x: { ticks: { maxRotation: 45, minRotation: 45, autoSkip: true, maxTicksLimit: 15 } } // Added for better label display
                     }, 
                     plugins: { tooltip: {callbacks: {label: (ctx) => `${ctx.raw} ммоль/л`}} }
                 }
@@ -1720,7 +1762,7 @@
                     maintainAspectRatio: false, 
                     scales: { 
                         y: { beginAtZero: true },
-                        x: { ticks: { maxRotation: 45, minRotation: 45 } }
+                        x: { ticks: { maxRotation: 45, minRotation: 45, autoSkip: true, maxTicksLimit: 15 } } 
                     }
                 }
             });
@@ -1741,10 +1783,11 @@
                     maintainAspectRatio: false, 
                     scales: { 
                         y: { beginAtZero: true, ticks: { stepSize: 1 } },
-                        x: { ticks: { maxRotation: 45, minRotation: 45 } }
+                        x: { ticks: { maxRotation: 45, minRotation: 45, autoSkip: true, maxTicksLimit: 15 } }
                     }
                 }
             });
+            updateChartColors(currentTheme); // ensure new charts also get correct colors
 
             // Недельная сводка
             const weekSummaryContainer = document.getElementById('weekSummaryContainer');
@@ -1814,7 +1857,7 @@
                 const row = reportTableBody.insertRow();
                 row.className = "dark:border-slate-600"
                 row.innerHTML = `
-                    <td class="border p-3 dark:border-slate-600">${day.date}</td>
+                    <td class="border p-3 dark:border-slate-600">${formatDate(day.fullDate)}</td>
                     <td class="border p-3 dark:border-slate-600">${day.mealsCount}</td>
                     <td class="border p-3 dark:border-slate-600">${day.carbs}г</td>
                     <td class="border p-3 dark:border-slate-600">${day.insulin} ед</td>
@@ -1891,7 +1934,7 @@
                 }
                 saveData();
                 if (currentView === 'products') renderProductsView();
-                if (currentView === 'calendar') renderNewMealProductOptions(); // Update meal modal dropdown
+                if (currentView === 'calendar') renderNewMealProductOptions(); 
                 lucide.createIcons(); 
                 closeModal(addProductModalEl);
             } else {
@@ -1918,7 +1961,7 @@
                 products = products.filter(p => p.id !== id);
                 saveData();
                 if (currentView === 'products') renderProductsView();
-                if (currentView === 'calendar') renderNewMealProductOptions(); // Update meal modal dropdown
+                if (currentView === 'calendar') renderNewMealProductOptions(); 
                 lucide.createIcons();
             }
         }
@@ -2100,7 +2143,6 @@
             });
         }
 
-        // Добавим функцию для получения месячных данных
         function getMonthData() {
             const data = [];
             const today = new Date();
@@ -2109,7 +2151,7 @@
             
             for (let i = 0; i < lastDayOfMonth.getDate(); i++) {
                 const date = new Date(firstDayOfMonth);
-                date.setDate(date.getDate() + i);
+                date.setDate(date.getDate() + i + 1); // Dates are 1-indexed
                 const dateStr = date.toISOString().split('T')[0];
                 
                 const dayMealsData = getDayMeals(dateStr);
@@ -2130,7 +2172,7 @@
                 }
                 
                 data.push({
-                    date: date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }),
+                    date: formatDate(dateStr).substring(0,5), // Use dd.mm for labels
                     fullDate: dateStr,
                     carbs: Math.round(totalCarbs),
                     insulin: Math.round(totalInsulin * 10) / 10,
@@ -2141,6 +2183,102 @@
             }
             return data;
         }
+
+        // --- EXPORT/IMPORT FUNCTIONALITY ---
+        document.getElementById('exportDayDataBtn').addEventListener('click', () => {
+            const dayMealsData = getDayMeals(selectedDate);
+            const dayGlucoseData = getDayGlucose(selectedDate);
+
+            if (dayMealsData.length === 0 && dayGlucoseData.length === 0) {
+                alert('Нет данных для экспорта за выбранный день.');
+                return;
+            }
+
+            const dataToExport = {
+                date: selectedDate,
+                meals: dayMealsData,
+                glucoseRecords: dayGlucoseData
+            };
+
+            const jsonData = JSON.stringify(dataToExport, null, 2);
+            const blob = new Blob([jsonData], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `diary_day_data_${selectedDate}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        document.getElementById('exportAllDataBtn').addEventListener('click', () => {
+            const allDataToExport = {
+                allData: { 
+                    products: products,
+                    meals: meals,
+                    glucoseRecords: glucoseRecords
+                }
+            };
+            const jsonData = JSON.stringify(allDataToExport, null, 2);
+            const blob = new Blob([jsonData], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `diary_all_data_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            alert('Все данные экспортированы.');
+        });
+
+        document.getElementById('importDataBtn').addEventListener('click', () => {
+            document.getElementById('importFile').click();
+        });
+
+        document.getElementById('importFile').addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const importedData = JSON.parse(e.target.result);
+                        
+                        if (importedData && importedData.allData) { // Full data import
+                            if (importedData.allData.meals) meals = importedData.allData.meals; else meals = {};
+                            if (importedData.allData.glucoseRecords) glucoseRecords = importedData.allData.glucoseRecords; else glucoseRecords = {};
+                            if (importedData.allData.products) products = importedData.allData.products; else products = [];
+                            alert('Все данные импортированы. Страница будет обновлена.');
+                        } else if (importedData && importedData.date && (importedData.meals || importedData.glucoseRecords)) { // Single day import
+                            const dateToImport = importedData.date;
+                            if (importedData.meals) {
+                                const existingMeals = meals[dateToImport] || [];
+                                const newMeals = importedData.meals.filter(im => !existingMeals.some(em => em.id === im.id));
+                                meals[dateToImport] = [...existingMeals, ...newMeals].sort((a, b) => a.time.localeCompare(b.time));
+                            }
+                            if (importedData.glucoseRecords) {
+                                 const existingGlucose = glucoseRecords[dateToImport] || [];
+                                 const newGlucose = importedData.glucoseRecords.filter(ig => !existingGlucose.some(eg => eg.id === ig.id));
+                                glucoseRecords[dateToImport] = [...existingGlucose, ...newGlucose].sort((a, b) => a.time.localeCompare(b.time));
+                            }
+                            alert(`Данные за ${formatDate(dateToImport)} импортированы и объединены.`);
+                        } else {
+                            alert('Неверный формат файла. Ожидается JSON с полями "date", "meals", "glucoseRecords" для однодневного импорта, или "allData" для полного импорта.');
+                        }
+                        saveData();
+                        renderView(); 
+                        lucide.createIcons();
+                    } catch (error) {
+                        console.error("Error parsing imported JSON:", error);
+                        alert('Ошибка при чтении файла. Убедитесь, что это корректный JSON файл.');
+                    }
+                    event.target.value = null; // Reset file input
+                };
+                reader.readAsText(file);
+            }
+        });
+
 
         // --- INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', () => {
