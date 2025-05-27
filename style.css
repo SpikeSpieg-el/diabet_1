@@ -399,4 +399,32 @@ input{
         justify-content: center; /* Center content within button */
     }
     
+/* Стиль для ползунка скролла (WebKit) */
+::-webkit-scrollbar {
+    width: 8px; /* Ширина ползунка */
+    height: 8px; /* Высота горизонтального ползунка */
+}
+
+/* Дорожка скролла */
+::-webkit-scrollbar-track {
+    background: rgb(30 41 59 / 0.5); /* Полупрозрачный фон, как в тёмной теме */
+    border-radius: 4px;
+}
+
+/* Сам ползунок */
+::-webkit-scrollbar-thumb {
+    background: #6d80a1;
+    border-radius: 4px;
+}
+
+/* Ползунок при наведении */
+::-webkit-scrollbar-thumb:hover {
+    background: #717171;
+}
+
+/* Стиль для Firefox */
+html {
+    scrollbar-width: thin;
+    scrollbar-color: #4f5f7a rgb(30 41 59 / 0.5);
+}
 
