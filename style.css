@@ -254,14 +254,7 @@
     .nav-button span { display: none; }
 }
 /* --- END OF COPIED CALCULATOR STYLES --- */
-.calendar-actions{
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 0.5rem;
-}
-/* --- Calendar Actions Adaptive styles --- */
-@media (max-width: 640px) { /* Tailwind's 'sm' breakpoint */
+
     .calendar-actions {
         flex-direction: column; /* Stack buttons vertically */
         align-items: stretch; /* Make buttons fill width */
@@ -272,4 +265,5 @@
         width: 100%; /* Make buttons full width */
         justify-content: center; /* Center content within button */
     }
-}
+    
+

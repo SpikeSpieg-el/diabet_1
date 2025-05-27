@@ -1239,10 +1239,86 @@ function renderReportsView() {
     const avgCarbsRec = weekData.reduce((sum, d) => sum + d.carbs, 0) / (weekData.length || 1);
     
     const recommendations = [];
-    if (avgGlucoseRec > 8) recommendations.push("⚠️ Средний уровень глюкозы повышен. Проконсультируйтесь с врачом.");
-    if (avgCarbsRec > 200) recommendations.push("📊 Высокое потребление углеводов. Рассмотрите снижение порций.");
-    if (weekData.some(d => d.mealsCount < 3 && d.mealsCount > 0)) recommendations.push("🍽️ Некоторые дни с малым количеством приемов пищи. Старайтесь питаться регулярно.");
-    if (recommendations.length === 0) recommendations.push("✅ Хороший контроль! Продолжайте в том же духе.");
+    
+    // Анализ уровня глюкозы
+    if (avgGlucoseRec > 8) {
+        recommendations.push("⚠️ Средний уровень глюкозы повышен. Проконсультируйтесь с врачом.");
+    } else if (avgGlucoseRec < 4) {
+        recommendations.push("⚠️ Средний уровень глюкозы ниже нормы. Возможно, стоит уменьшить дозы инсулина.");
+    }
+    
+    // Анализ углеводов
+    if (avgCarbsRec > 420) {
+        recommendations.push("📊 Высокое потребление углеводов. Рассмотрите снижение порций.");
+    } else if (avgCarbsRec < 200) {
+        recommendations.push("📊 Низкое потребление углеводов. Убедитесь, что получаете достаточно питательных веществ.");
+    }
+    
+    // Анализ приемов пищи
+    if (weekData.some(d => d.mealsCount < 3 && d.mealsCount > 0)) {
+        recommendations.push("🍽️ Некоторые дни с малым количеством приемов пищи. Старайтесь питаться регулярно.");
+    }
+    if (weekData.some(d => d.mealsCount > 5)) {
+        recommendations.push("🍽️ Обнаружены дни с большим количеством приемов пищи. Старайтесь придерживаться 3-4 приемов пищи в день.");
+    }
+    
+    // Анализ инсулина
+    const avgInsulinPerDay = weekData.reduce((sum, day) => sum + day.totalInsulin, 0) / weekData.length;
+    if (avgInsulinPerDay > 50) {
+        recommendations.push("💉 Высокая суточная доза инсулина. Обсудите с врачом возможность корректировки.");
+    }
+    
+    // Анализ стабильности глюкозы
+    const glucoseVariations = weekData.map(day => {
+        if (!day.glucoseRecords || day.glucoseRecords.length === 0) return 0;
+        const glucoseLevels = day.glucoseRecords.map(r => r.glucose);
+        return Math.max(...glucoseLevels) - Math.min(...glucoseLevels);
+    }).filter(variation => variation > 0); // Фильтруем дни без измерений
+
+    const avgVariation = glucoseVariations.length > 0 
+        ? glucoseVariations.reduce((a, b) => a + b, 0) / glucoseVariations.length 
+        : 0;
+
+    if (avgVariation > 5) {
+        recommendations.push("📈 Высокая вариация уровня глюкозы в течение дня. Старайтесь поддерживать более стабильный уровень.");
+    }
+    
+    // Анализ времени приема пищи
+    const mealTimes = weekData.flatMap(day => {
+        if (!day.meals || day.meals.length === 0) return [];
+        return day.meals.map(meal => new Date(meal.time).getHours());
+    });
+    
+    const lateMeals = mealTimes.filter(hour => hour >= 22 || hour <= 5).length;
+    if (lateMeals > 0) {
+        recommendations.push("🌙 Обнаружены поздние приемы пищи. Старайтесь ужинать не позднее 20:00.");
+    }
+    
+    // Анализ соотношения инсулин/углеводы
+    const insulinCarbRatios = weekData.map(day => {
+        if (!day.totalCarbs || day.totalCarbs === 0 || !day.totalInsulin) return 0;
+        return day.totalInsulin / day.totalCarbs;
+    }).filter(ratio => ratio > 0);
+    
+    if (insulinCarbRatios.length > 0) {
+        const avgRatio = insulinCarbRatios.reduce((a, b) => a + b, 0) / insulinCarbRatios.length;
+        if (avgRatio > 0.5) {
+            recommendations.push("⚖️ Высокое соотношение инсулин/углеводы. Возможно, стоит пересмотреть углеводный коэффициент.");
+        } else if (avgRatio < 0.1) {
+            recommendations.push("⚖️ Низкое соотношение инсулин/углеводы. Проверьте правильность расчета доз инсулина.");
+        }
+    }
+    
+    // Положительные рекомендации
+    if (recommendations.length === 0) {
+        recommendations.push("✅ Отличный контроль! Продолжайте в том же духе.");
+    } else if (avgGlucoseRec >= 4 && avgGlucoseRec <= 8 && avgVariation <= 5) {
+        recommendations.push("✅ Хороший контроль уровня глюкозы! Старайтесь поддерживать такую же стабильность.");
+    }
+    
+    // Добавляем общие рекомендации
+    recommendations.push("💡 Регулярно консультируйтесь с врачом для корректировки терапии.");
+    recommendations.push("📱 Используйте приложение для ежедневного мониторинга показателей.");
     
     recommendations.forEach(rec => {
         const div = document.createElement('div');
@@ -1250,6 +1326,7 @@ function renderReportsView() {
         div.textContent = rec;
         recListEl.appendChild(div);
     });
+
 }
 
 // --- MODAL HANDLING ---
