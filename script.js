@@ -263,6 +263,9 @@ function getLocalDateYYYYMMDD(dateObj) {
 }
 let selectedDate = getLocalDateYYYYMMDD(new Date()); // Initial selectedDate is local YYYY-MM-DD
 
+// New state for calendar view
+let currentCalendarDate = new Date(); // Date object to track the displayed month/year
+
 let currentTheme = localStorage.getItem('diabetesAppTheme') || 'light';
 
 let products = JSON.parse(localStorage.getItem('diabetesAppProducts')) || [
@@ -667,19 +670,16 @@ function renderView() {
     lucide.createIcons(); 
 }
 
-function generateCalendarDays() {
-    const today = new Date(); 
-    const currentMonth = today.getMonth();
-    const currentYear = today.getFullYear();
-    const firstDay = new Date(currentYear, currentMonth, 1);
-    const lastDay = new Date(currentYear, currentMonth + 1, 0);
+function generateCalendarDays(year, month) { // month is 0-indexed
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
     const daysInMonth = lastDay.getDate();
     const startDay = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1; 
 
     const days = [];
     for (let i = 0; i < startDay; i++) days.push(null);
     for (let day = 1; day <= daysInMonth; day++) {
-        const localDayDate = new Date(currentYear, currentMonth, day);
+        const localDayDate = new Date(year, month, day);
         const localDateString = getLocalDateYYYYMMDD(localDayDate); // Use local YYYY-MM-DD
         days.push({ date: localDateString, day });
     }
@@ -687,8 +687,9 @@ function generateCalendarDays() {
 }
 
 function renderCalendarGrid() {
-    const today = new Date();
-    calendarHeaderEl.textContent = `${monthNames[today.getMonth()]} ${today.getFullYear()}`;
+    const currentMonth = currentCalendarDate.getMonth(); // 0-indexed
+    const currentYear = currentCalendarDate.getFullYear();
+    calendarHeaderEl.textContent = `${monthNames[currentMonth]} ${currentYear}`;
     
     const dayNamesContainer = calendarGridEl.previousElementSibling;
     if (dayNamesContainer.children.length === 0) {
@@ -701,7 +702,7 @@ function renderCalendarGrid() {
     }
 
     calendarGridEl.innerHTML = '';
-    const days = generateCalendarDays();
+    const days = generateCalendarDays(currentYear, currentMonth);
     days.forEach(dayObj => {
         const dayDiv = document.createElement('div');
         dayDiv.className = "aspect-square";
@@ -1596,3 +1597,24 @@ document.addEventListener('DOMContentLoaded', () => {
     renderView(); 
 });
 // --- END OF DIARY APP JavaScript ---
+
+// Add event listeners for new calendar navigation buttons (will be added in HTML)
+document.getElementById('prevMonthBtn').addEventListener('click', goToPreviousMonth);
+document.getElementById('nextMonthBtn').addEventListener('click', goToNextMonth);
+document.getElementById('todayBtn').addEventListener('click', goToToday);
+
+// New functions for calendar navigation
+function goToPreviousMonth() {
+    currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1);
+    renderCalendarView();
+}
+
+function goToNextMonth() {
+    currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1);
+    renderCalendarView();
+}
+
+function goToToday() {
+    currentCalendarDate = new Date(); // Set to local 'today'
+    renderCalendarView();
+}
