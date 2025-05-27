@@ -1,4 +1,3 @@
-// --- START OF CALCULATOR JavaScript (copied from code (5).html, window.onload removed) ---
 const CR_KEY = 'diabetesCalcAdvPop_carbRatio'; 
 const SF_KEY = 'diabetesCalcAdvPop_sensitivityFactor';
 const TS_KEY = 'diabetesCalcAdvPop_targetSugar';
@@ -134,10 +133,10 @@ function saveSettings() {
         localStorage.setItem(CR_KEY, carbRatio.toString());
         localStorage.setItem(SF_KEY, sensitivityFactor.toString());
         localStorage.setItem(TS_KEY, targetSugar.toString());
-        alert('Коэффициенты сохранены!');
+        showAlertPopup('Коэффициенты сохранены!', 'success');
         loadSettingsToCalcForm(); 
     } else {
-        alert('Пожалуйста, исправьте ошибки в значениях коэффициентов.');
+        showAlertPopup('Пожалуйста, исправьте ошибки в значениях коэффициентов.', 'error');
     }
 }
 
@@ -779,7 +778,11 @@ function renderDayMeals() {
                     <div><span class="text-gray-500 dark:text-gray-400">Расчет инсулина:</span><div class="font-semibold text-blue-600 dark:text-blue-400">${stats.insulin} ед</div></div>
                     <div><span class="text-gray-500 dark:text-gray-400">Фактически:</span><div class="font-semibold text-green-600 dark:text-green-400">${meal.actualInsulin || 0} ед</div></div>
                 </div>
-                ${meal.notes ? `<div class="mt-2 text-xs text-gray-600 dark:text-gray-300"><strong>Заметки:</strong> ${meal.notes}</div>` : ''}
+                ${meal.notes ? `
+                <div class="mt-2">
+                    <div class="text-xs text-gray-500 dark:text-gray-400 font-semibold mb-1">Заметки:</div>
+                    <div class="text-xs text-gray-600 dark:text-gray-300 break-words whitespace-pre-wrap">${meal.notes}</div>
+                </div>` : ''}
             </div>
         `;
         mealEl.querySelector('button[data-meal-id]').addEventListener('click', () => deleteMeal(meal.id));
@@ -908,25 +911,90 @@ function renderDaySummary() {
 // --- Products View Functions ---
 function renderProductsView() {
     productsTableBodyEl.innerHTML = '';
-    products.forEach(product => {
-        const row = productsTableBodyEl.insertRow();
-        row.className = "dark:border-slate-600"
-        row.innerHTML = `
-            <td class="border p-3 dark:border-slate-600">${product.name}</td>
-            <td class="border p-3 dark:border-slate-600">${product.carbs}</td>
-            <td class="border p-3 dark:border-slate-600">${product.insulinRatio}</td>
-            <td class="border p-3 dark:border-slate-600">
-                <div class="flex space-x-2">
-                    <button data-edit-id="${product.id}" class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-500"><i data-lucide="edit" class="w-4 h-4"></i></button>
-                    <button data-delete-id="${product.id}" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+    
+    const isMobile = window.innerWidth < 640; // sm breakpoint
+    
+    if (isMobile) {
+        // Мобильный вариант - карточки
+        products.forEach(product => {
+            const card = document.createElement('div');
+            card.className = "border rounded-lg p-4 mb-3 dark:border-slate-700";
+            card.innerHTML = `
+                <div class="flex justify-between items-start mb-2">
+                    <div class="font-medium dark:text-gray-200">${product.name}</div>
+                    <div class="flex space-x-2">
+                        <button data-edit-id="${product.id}" class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-500">
+                            <i data-lucide="edit" class="w-4 h-4"></i>
+                        </button>
+                        <button data-delete-id="${product.id}" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-500">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
                 </div>
-            </td>
+                <div class="grid grid-cols-2 gap-2 text-sm">
+                    <div class="text-gray-500 dark:text-gray-400">Углеводы:</div>
+                    <div class="dark:text-gray-300">${product.carbs}г/100г</div>
+                    <div class="text-gray-500 dark:text-gray-400">Инсулин:</div>
+                    <div class="dark:text-gray-300">${product.insulinRatio} ед/ХЕ</div>
+                </div>
+            `;
+            card.querySelector(`button[data-edit-id="${product.id}"]`).addEventListener('click', () => openEditProductModal(product.id));
+            card.querySelector(`button[data-delete-id="${product.id}"]`).addEventListener('click', () => deleteProduct(product.id));
+            productsTableBodyEl.appendChild(card);
+        });
+    } else {
+        // Десктоп вариант - таблица
+        const table = document.createElement('table');
+        table.className = "w-full border-collapse";
+        table.innerHTML = `
+            <thead class="dark:text-gray-200">
+                <tr class="bg-gray-50 dark:bg-slate-700">
+                    <th class="border p-3 text-left dark:border-slate-600">Продукт</th>
+                    <th class="border p-3 text-left dark:border-slate-600">Углеводы (г/100г)</th>
+                    <th class="border p-3 text-left dark:border-slate-600">Инсулин (ед/ХЕ)</th>
+                    <th class="border p-3 text-left dark:border-slate-600">Действия</th>
+                </tr>
+            </thead>
+            <tbody class="dark:text-gray-300 dark:border-slate-600"></tbody>
         `;
-        row.querySelector(`button[data-edit-id="${product.id}"]`).addEventListener('click', () => openEditProductModal(product.id));
-        row.querySelector(`button[data-delete-id="${product.id}"]`).addEventListener('click', () => deleteProduct(product.id));
-    });
+        
+        const tbody = table.querySelector('tbody');
+        
+        products.forEach(product => {
+            const row = tbody.insertRow();
+            row.className = "dark:border-slate-600";
+            row.innerHTML = `
+                <td class="border p-3 dark:border-slate-600">${product.name}</td>
+                <td class="border p-3 dark:border-slate-600">${product.carbs}</td>
+                <td class="border p-3 dark:border-slate-600">${product.insulinRatio}</td>
+                <td class="border p-3 dark:border-slate-600">
+                    <div class="flex space-x-2">
+                        <button data-edit-id="${product.id}" class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-500">
+                            <i data-lucide="edit" class="w-4 h-4"></i>
+                        </button>
+                        <button data-delete-id="${product.id}" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-500">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </td>
+            `;
+            row.querySelector(`button[data-edit-id="${product.id}"]`).addEventListener('click', () => openEditProductModal(product.id));
+            row.querySelector(`button[data-delete-id="${product.id}"]`).addEventListener('click', () => deleteProduct(product.id));
+        });
+        
+        productsTableBodyEl.innerHTML = '';
+        productsTableBodyEl.appendChild(table);
+    }
+    
     lucide.createIcons();
 }
+
+// Добавляем обработчик изменения размера окна
+window.addEventListener('resize', () => {
+    if (currentView === 'products') {
+        renderProductsView();
+    }
+});
 
 // --- Analytics and Reports Data Helpers ---
 function getWeekData() {
@@ -1360,7 +1428,7 @@ document.getElementById('addProductForm').addEventListener('submit', (e) => {
         lucide.createIcons(); 
         closeModal(addProductModalEl);
     } else {
-        alert('Пожалуйста, заполните все поля корректно.');
+        showAlertPopup('Заполните все поля корректно.', 'error');
     }
 });
 
@@ -1379,13 +1447,15 @@ function openEditProductModal(id) {
 }
 
 function deleteProduct(id) {
-    if (confirm('Вы уверены, что хотите удалить этот продукт?')) {
-        products = products.filter(p => p.id !== id);
-        saveData();
-        if (currentView === 'products') renderProductsView();
-        if (currentView === 'calendar') renderNewMealProductOptions(); 
-        lucide.createIcons();
-    }
+    showConfirmPopup('Вы уверены, что хотите удалить этот продукт?', (confirmed) => {
+        if (confirmed) {
+            products = products.filter(p => p.id !== id);
+            saveData();
+            if (currentView === 'products') renderProductsView();
+            if (currentView === 'calendar') renderNewMealProductOptions(); 
+            lucide.createIcons();
+        }
+    });
 }
 
 // Add Meal Modal
@@ -1453,11 +1523,20 @@ document.getElementById('addProductToMealBtn').addEventListener('click', () => {
     const productId = parseInt(document.getElementById('newMealSelectedProduct').value);
     const amount = parseFloat(document.getElementById('newMealProductAmount').value);
 
-    if (!productId) { alert('Пожалуйста, выберите продукт'); return; }
-    if (isNaN(amount) || amount <= 0) { alert('Пожалуйста, укажите корректный вес продукта'); return; }
+    if (!productId) { 
+        showAlertPopup('Пожалуйста, выберите продукт', 'error'); 
+        return; 
+    }
+    if (isNaN(amount) || amount <= 0) { 
+        showAlertPopup('Пожалуйста, укажите корректный вес продукта', 'error'); 
+        return; 
+    }
     
     const product = products.find(p => p.id === productId);
-    if (!product) { alert('Продукт не найден'); return; }
+    if (!product) { 
+        showAlertPopup('Продукт не найден', 'error'); 
+        return; 
+    }
 
     newMealFormState.products.push({ id: product.id, amount });
     renderNewMealProductsList();
@@ -1471,8 +1550,8 @@ document.getElementById('addMealForm').addEventListener('submit', (e) => {
     const actualInsulin = parseFloat(document.getElementById('newMealActualInsulin').value) || 0;
     const notes = document.getElementById('newMealNotes').value;
 
-    if (!time) { alert('Пожалуйста, укажите время приема пищи'); return; }
-    if (newMealFormState.products.length === 0) { alert('Пожалуйста, добавьте хотя бы один продукт'); return; }
+    if (!time) { showAlertPopup('Укажите время приема пищи.', 'error'); return; }
+    if (newMealFormState.products.length === 0) { showAlertPopup('Добавьте хотя бы один продукт.', 'error'); return; }
 
     const dayMealsData = getDayMeals(selectedDate);
     const newMealEntry = {
@@ -1492,15 +1571,17 @@ document.getElementById('addMealForm').addEventListener('submit', (e) => {
 });
 
 function deleteMeal(mealId) {
-     if (confirm('Вы уверены, что хотите удалить этот прием пищи?')) {
-        const dayMealsData = getDayMeals(selectedDate);
-        meals[selectedDate] = dayMealsData.filter(m => m.id !== mealId);
-        if (meals[selectedDate].length === 0) delete meals[selectedDate];
-        saveData();
-        if (currentView === 'calendar') renderCalendarView();
-        else if (currentView === 'analytics' || currentView === 'reports') renderView();
-        lucide.createIcons();
-    }
+     showConfirmPopup('Вы уверены, что хотите удалить этот прием пищи?', (confirmed) => {
+         if (confirmed) {
+             const dayMealsData = getDayMeals(selectedDate);
+             meals[selectedDate] = dayMealsData.filter(m => m.id !== mealId);
+             if (meals[selectedDate].length === 0) delete meals[selectedDate];
+             saveData();
+             if (currentView === 'calendar') renderCalendarView();
+             else if (currentView === 'analytics' || currentView === 'reports') renderView();
+             lucide.createIcons();
+         }
+     });
 }
 
 // Add Glucose Modal
@@ -1528,20 +1609,22 @@ document.getElementById('addGlucoseForm').addEventListener('submit', (e) => {
         lucide.createIcons();
         closeModal(addGlucoseModalEl);
     } else {
-        alert('Пожалуйста, укажите время и уровень глюкозы.');
+        showAlertPopup('Укажите время и уровень глюкозы.', 'error');
     }
 });
 
 function deleteGlucose(recordId) {
-    if (confirm('Вы уверены, что хотите удалить это измерение глюкозы?')) {
-        const dayGlucoseData = getDayGlucose(selectedDate);
-        glucoseRecords[selectedDate] = dayGlucoseData.filter(r => r.id !== recordId);
-        if (glucoseRecords[selectedDate].length === 0) delete glucoseRecords[selectedDate];
-        saveData();
-        if (currentView === 'calendar') renderCalendarView();
-        else if (currentView === 'analytics' || currentView === 'reports') renderView();
-        lucide.createIcons();
-    }
+    showConfirmPopup('Вы уверены, что хотите удалить это измерение глюкозы?', (confirmed) => {
+        if (confirmed) {
+            const dayGlucoseData = getDayGlucose(selectedDate);
+            glucoseRecords[selectedDate] = dayGlucoseData.filter(r => r.id !== recordId);
+            if (glucoseRecords[selectedDate].length === 0) delete glucoseRecords[selectedDate];
+            saveData();
+            if (currentView === 'calendar') renderCalendarView();
+            else if (currentView === 'analytics' || currentView === 'reports') renderView();
+            lucide.createIcons();
+        }
+    });
 }
 
 // --- EVENT LISTENERS ---
@@ -1571,7 +1654,7 @@ document.getElementById('exportDayDataBtn').addEventListener('click', () => {
     const dayGlucoseData = getDayGlucose(selectedDate);
 
     if (dayMealsData.length === 0 && dayGlucoseData.length === 0) {
-        alert('Нет данных для экспорта за выбранный день.');
+        showAlertPopup('Нет данных для экспорта за выбранный день.', 'info');
         return;
     }
 
@@ -1611,7 +1694,7 @@ document.getElementById('exportAllDataBtn').addEventListener('click', () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    alert('Все данные экспортированы.');
+    showAlertPopup('Все данные экспортированы.', 'success');
 });
 
 document.getElementById('importDataBtn').addEventListener('click', () => {
@@ -1627,16 +1710,18 @@ document.getElementById('importFile').addEventListener('change', (event) => {
                 const importedData = JSON.parse(e.target.result);
                 
                 if (importedData && importedData.allData) { 
-                    if (confirm("Это приведет к полной замене всех существующих данных. Продолжить?")) {
-                        if (importedData.allData.meals) meals = importedData.allData.meals; else meals = {};
-                        if (importedData.allData.glucoseRecords) glucoseRecords = importedData.allData.glucoseRecords; else glucoseRecords = {};
-                        if (importedData.allData.products) products = importedData.allData.products; else products = [];
-                        alert('Все данные импортированы и заменены.');
-                    } else {
-                        alert('Импорт отменен.');
-                        event.target.value = null; 
-                        return;
-                    }
+                    showConfirmPopup("Это приведет к полной замене всех существующих данных. Продолжить?", (confirmed) => {
+                        if (confirmed) {
+                            if (importedData.allData.meals) meals = importedData.allData.meals; else meals = {};
+                            if (importedData.allData.glucoseRecords) glucoseRecords = importedData.allData.glucoseRecords; else glucoseRecords = {};
+                            if (importedData.allData.products) products = importedData.allData.products; else products = [];
+                            showAlertPopup('Все данные импортированы и заменены.', 'success');
+                        } else {
+                            showAlertPopup('Импорт отменен.', 'info');
+                            event.target.value = null; 
+                            return;
+                        }
+                    });
                 } else if (importedData && importedData.date && (importedData.meals || importedData.glucoseRecords)) { 
                     const dateToImport = importedData.date; // Assume this is local YYYY-MM-DD from export
                     if (importedData.meals) {
@@ -1650,9 +1735,9 @@ document.getElementById('importFile').addEventListener('change', (event) => {
                         glucoseRecords[dateToImport] = [...existingGlucose, ...newGlucose].sort((a, b) => a.time.localeCompare(b.time));
                     }
                     selectedDate = dateToImport; // Switch to the imported day
-                    alert(`Данные за ${formatDate(dateToImport)} импортированы и объединены.`);
+                    showAlertPopup(`Данные за ${formatDate(dateToImport)} импортированы и объединены.`, 'success');
                 } else {
-                    alert('Неверный формат файла. Ожидается JSON с полями "date", "meals", "glucoseRecords" для однодневного импорта, или "allData" для полного импорта.');
+                    showAlertPopup('Неверный формат файла. Ожидается JSON с корректными полями.', 'error');
                 }
                 saveData();
                 renderView(); 
@@ -1694,4 +1779,71 @@ function goToNextMonth() {
 function goToToday() {
     currentCalendarDate = new Date(); // Set to local 'today'
     renderCalendarView();
+}
+
+// Функция для показа кастомного алерта
+function showAlertPopup(message, type = 'info') {
+    const alertPopup = document.createElement('div');
+    alertPopup.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-xs ${
+        type === 'error' ? 'bg-red-100 text-red-800 dark:bg-red-800/80 dark:text-red-300' : 
+        type === 'success' ? 'bg-green-100 text-green-800 dark:bg-green-800/80 dark:text-green-300' : 
+        'bg-blue-100 text-blue-800 dark:bg-blue-800/80 dark:text-blue-300'
+    }`;
+    alertPopup.innerHTML = `
+        <div class="flex items-start">
+            <i data-lucide="${
+                type === 'error' ? 'alert-triangle' : 
+                type === 'success' ? 'check-circle' : 'info'
+            }" class="w-5 h-5 mr-2 mt-0.5"></i>
+            <div>${message}</div>
+            <button class="ml-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+    `;
+    document.body.appendChild(alertPopup);
+    lucide.createIcons();
+
+    // Удаление попапа через 5 секунд или по клику
+    const closeBtn = alertPopup.querySelector('button');
+    closeBtn.addEventListener('click', () => alertPopup.remove());
+    setTimeout(() => alertPopup.remove(), 5000);
+}
+
+// Функция для показа кастомного подтверждения
+function showConfirmPopup(message, callback) {
+    const confirmPopup = document.createElement('div');
+    confirmPopup.className = 'fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4';
+    confirmPopup.innerHTML = `
+        <div class="bg-white rounded-xl p-6 w-full max-w-md dark:bg-slate-800">
+            <div class="flex items-start mb-4">
+                <i data-lucide="alert-circle" class="w-6 h-6 mr-2 text-yellow-500 dark:text-yellow-400"></i>
+                <div class="text-gray-800 dark:text-gray-200">${message}</div>
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button id="confirmNo" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 dark:bg-slate-600 dark:text-gray-200 dark:hover:bg-slate-500">
+                    Нет
+                </button>
+                <button id="confirmYes" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700">
+                    Да
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(confirmPopup);
+    lucide.createIcons();
+
+    const removePopup = () => {
+        confirmPopup.remove();
+    };
+
+    confirmPopup.querySelector('#confirmYes').addEventListener('click', () => {
+        callback(true);
+        removePopup();
+    });
+
+    confirmPopup.querySelector('#confirmNo').addEventListener('click', () => {
+        callback(false);
+        removePopup();
+    });
 }

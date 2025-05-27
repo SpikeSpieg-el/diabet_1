@@ -269,19 +269,8 @@
                 </button>
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full border-collapse">
-                    <thead class="dark:text-gray-200">
-                        <tr class="bg-gray-50 dark:bg-slate-700">
-                            <th class="border p-3 text-left dark:border-slate-600">Продукт</th>
-                            <th class="border p-3 text-left dark:border-slate-600">Углеводы (г/100г)</th>
-                            <th class="border p-3 text-left dark:border-slate-600">Инсулин (ед/ХЕ)</th>
-                            <th class="border p-3 text-left dark:border-slate-600">Действия</th>
-                        </tr>
-                    </thead>
-                    <tbody id="productsTableBody" class="dark:text-gray-300 dark:border-slate-600">
-                        <!-- Список продуктов -->
-                    </tbody>
-                </table>
+                <!-- Изменяем таблицу на div для мобильной версии -->
+                <div id="productsTableBody" class="w-full"></div>
             </div>
         </div>
 
@@ -403,15 +392,17 @@
                     <input type="time" id="newMealTime" class="w-full p-3 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-gray-50 dark:[color-scheme:dark]" required>
                     <div class="border rounded-lg p-4 dark:border-slate-700">
                         <h4 class="font-medium mb-3 dark:text-gray-200">Добавить продукт:</h4>
-                        <div class="flex space-x-2 mb-3">
+                        <div class="flex flex-col sm:flex-row gap-2 mb-3">
                             <select id="newMealSelectedProduct" class="flex-1 p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-gray-50">
                                 <option value="">Выберите продукт</option>
                                 <!-- Опции продуктов -->
                             </select>
-                            <input type="number" id="newMealProductAmount" placeholder="Вес (г)" class="w-24 p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-gray-50 dark:placeholder-gray-400" step="1" min="1">
-                            <button type="button" id="addProductToMealBtn" class="px-3 py-2 rounded-lg bg-green-500 text-white hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 transition-colors">
-                                <i data-lucide="plus" class="w-4 h-4"></i>
-                            </button>
+                            <div class="flex gap-2">
+                                <input type="number" id="newMealProductAmount" placeholder="Вес (г)" class="w-full sm:w-24 p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-gray-50 dark:placeholder-gray-400" step="1" min="1">
+                                <button type="button" id="addProductToMealBtn" class="px-3 py-2 rounded-lg bg-green-500 text-white hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 transition-colors whitespace-nowrap">
+                                    <i data-lucide="plus" class="w-4 h-4"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <div id="newMealProductsListContainer" class="border rounded-lg p-4 dark:border-slate-700" style="display:none;">
