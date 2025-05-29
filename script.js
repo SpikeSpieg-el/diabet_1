@@ -679,7 +679,7 @@ function renderPredictedCurrentSugar() {
 
     if (recentCarbEvents.length > 0) {
         recentCarbEvents.sort((a, b) => a.time.localeCompare(b.time)); // Oldest first
-        pc_carbs.innerHTML = `<strong>Еда:</strong> ${recentCarbEvents.map(e => e.carbs + 'г @' + e.time).join(' • ')}.`;
+        pc_carbs.innerHTML = `<strong>Еда:</strong> ${recentCarbEvents.map(e => e.carbs + 'г в ' + e.time).join(' • ')}.`;
     } else {
         pc_carbs.innerHTML = ''; // Or "<strong>Еда:</strong> нет недавних записей"
     }
@@ -699,7 +699,7 @@ function renderPredictedCurrentSugar() {
     
     if (recentInsulinEvents.length > 0) {
         recentInsulinEvents.sort((a, b) => a.time.localeCompare(b.time)); // Oldest first
-        pc_insulin.innerHTML = `<strong>Инсулин:</strong> ${recentInsulinEvents.map(e => e.dose + 'ед @' + e.time).join(' • ')}.`;
+        pc_insulin.innerHTML = `<strong>Инсулин:</strong> ${recentInsulinEvents.map(e => e.dose + 'ед в ' + e.time).join(' • ')}.`;
     } else {
         pc_insulin.innerHTML = ''; // Or "<strong>Инсулин:</strong> нет недавних записей"
     }
