@@ -1,6 +1,7 @@
 const CR_KEY = 'diabetesCalcAdvPop_carbRatio'; 
 const SF_KEY = 'diabetesCalcAdvPop_sensitivityFactor';
 const TS_KEY = 'diabetesCalcAdvPop_targetSugar';
+const INSULIN_ACTION_DURATION_HOURS = 4; // Standard duration for fast-acting insulin
 
 const popupData = {
     settingsInfo: {
@@ -434,9 +435,9 @@ function calculateMealStats(mealProducts) {
     });
 
     return {
-        carbs: totalCarbs.toFixed(1),
-        breadUnits: (totalCarbs / 12).toFixed(1),
-        insulin: totalInsulin.toFixed(1)
+        carbs: parseFloat(totalCarbs.toFixed(1)),
+        breadUnits: parseFloat((totalCarbs / 12).toFixed(1)), // Also ensuring breadUnits is numeric for consistency
+        insulin: parseFloat(totalInsulin.toFixed(1))
     };
 }
 
@@ -515,10 +516,72 @@ function findSugarBeforeMeal(dateStr, mealTimeStr) { // dateStr is local YYYY-MM
         const diffMinutes = (mealDateTime - glucoseDateTime) / (1000 * 60);
 
         if (diffMinutes <= 90 && diffMinutes >= 0) { 
-            return latestGlucoseBeforeMeal.glucose;
+            return { glucose: latestGlucoseBeforeMeal.glucose, time: latestGlucoseBeforeMeal.time };
         }
     }
     return null;
+}
+
+function calculateIOB(insulinEvents, currentTime, insulinActionDurationHours, selectedDate) {
+    let totalIOB = 0;
+    if (!Array.isArray(insulinEvents)) {
+        console.error("calculateIOB: insulinEvents is not an array.");
+        return 0;
+    }
+
+    for (const event of insulinEvents) {
+        if (typeof event.time !== 'string' || typeof event.dose !== 'number' || isNaN(event.dose)) {
+            console.error("calculateIOB: Invalid event structure", event);
+            continue;
+        }
+        const doseDateTime = new Date(selectedDate + 'T' + event.time);
+        if (isNaN(doseDateTime.getTime())) {
+            console.error("calculateIOB: Invalid date constructed for event", event, selectedDate);
+            continue;
+        }
+
+        const hoursAgo = (currentTime.getTime() - doseDateTime.getTime()) / (1000 * 60 * 60);
+
+        // If hoursAgo is negative, the dose is in the future, so we ignore it.
+        if (hoursAgo >= 0 && hoursAgo < insulinActionDurationHours) {
+            const remainingFraction = 1 - (hoursAgo / insulinActionDurationHours);
+            totalIOB += event.dose * remainingFraction;
+        }
+    }
+    return Math.max(0, parseFloat(totalIOB.toFixed(2))); // Return IOB rounded to 2 decimal places
+}
+
+function calculateAdvancedPrediction(baselineGlucose, recentCarbEvents, iob, coeffs, selectedDate, currentTime) {
+    let predictedSugar = baselineGlucose;
+    const { carbRatio, sensitivityFactor } = coeffs;
+
+    if (carbRatio == null || sensitivityFactor == null || isNaN(carbRatio) || isNaN(sensitivityFactor) || carbRatio === 0 || sensitivityFactor === 0) {
+        console.error("calculateAdvancedPrediction: Invalid coefficients", coeffs);
+        return null; // Or baselineGlucose, depending on desired behavior for error
+    }
+
+    // Subtract IOB effect
+    predictedSugar -= iob * sensitivityFactor;
+
+    // Add Carb Effects
+    if (Array.isArray(recentCarbEvents)) {
+        for (const event of recentCarbEvents) {
+            const carbs = event.carbs;
+            // const carbTime = new Date(selectedDate + 'T' + event.time); // Not used in this simple model iteration
+            
+            // For this iteration, we'll use a simple model: add the full potential rise.
+            // We'll assume a default carbAbsorptionFactor of 1.0.
+            const carbAbsorptionFactor = 1.0; 
+            const sugarIncreaseFromCarbs = ((carbs * carbAbsorptionFactor) / 10) * carbRatio * sensitivityFactor;
+            predictedSugar += sugarIncreaseFromCarbs;
+        }
+    }
+
+    // Apply Bounds
+    if (predictedSugar < 0.5) predictedSugar = 0.5;
+    if (predictedSugar > 40.0) predictedSugar = 40.0;
+
+    return parseFloat(predictedSugar.toFixed(1));
 }
 
 function isPredictionSuperseded(dateStr, mealTimeStr) { // dateStr is local YYYY-MM-DD
@@ -543,72 +606,170 @@ function isPredictionSuperseded(dateStr, mealTimeStr) { // dateStr is local YYYY
 }
 
 function renderPredictedCurrentSugar() {
+    const PREDICTION_CARB_LOOKBACK_HOURS = 4;
+    const PREDICTION_INSULIN_LOOKBACK_HOURS = 4;
+    const PREDICTION_RECENT_GLUCOSE_MINUTES = 30; // For using a live BG as baseline
+
     if (!predictedSugarSectionEl || !predictedSugarDisplayEl || !predictionContextEl) {
         console.error("Prediction UI elements not found.");
         return;
     }
+    predictedSugarSectionEl.style.display = 'none'; // Hide by default
 
-    predictedSugarSectionEl.style.display = 'none'; 
+    let baselineGlucose = null;
+    let baselineGlucoseTime = null;
+    let predictionStatusMessage = "";
 
-    const todayLocalStr = getLocalDateYYYYMMDD(new Date());
-    if (selectedDate !== todayLocalStr) { // Compare with local 'today'
-        return; 
-    }
-
-    const dayMealsData = getDayMeals(selectedDate).sort((a, b) => b.time.localeCompare(a.time)); 
-    if (dayMealsData.length === 0) {
-        return; 
-    }
-    const latestMeal = dayMealsData[0];
-
-    const mealDateTime = new Date(`${selectedDate}T${latestMeal.time}`); // selectedDate is local YYYY-MM-DD
     const currentTime = new Date();
-    const hoursSinceMeal = (currentTime - mealDateTime) / (1000 * 60 * 60);
+    const todayLocalStr = getLocalDateYYYYMMDD(new Date());
+    const isToday = (selectedDate === todayLocalStr);
 
-    if (hoursSinceMeal < 0 || hoursSinceMeal > 4) { 
-        return;
+    // Fetch Recent Actual Glucose (as potential baseline)
+    const dayGlucoseData = getDayGlucose(selectedDate).sort((a, b) => b.time.localeCompare(a.time)); // sorted newest first
+
+    if (dayGlucoseData.length > 0 && isToday) {
+        const latestGlucoseRecord = dayGlucoseData[0];
+        const glucoseDateTime = new Date(selectedDate + 'T' + latestGlucoseRecord.time);
+        const minutesSinceLatestGlucose = (currentTime - glucoseDateTime) / (1000 * 60);
+
+        if (minutesSinceLatestGlucose >= 0 && minutesSinceLatestGlucose <= PREDICTION_RECENT_GLUCOSE_MINUTES) {
+            baselineGlucose = latestGlucoseRecord.glucose;
+            baselineGlucoseTime = latestGlucoseRecord.time;
+            predictionStatusMessage += `Недавний СК: ${baselineGlucose} ммоль/л (${baselineGlucoseTime}). `;
+        }
+    }
+
+    // Fetch Recent Carbohydrate Events
+    let recentCarbEvents = [];
+    const allDayMeals = getDayMeals(selectedDate); // Assumes getDayMeals returns meals for the selectedDate
+
+    allDayMeals.forEach(meal => {
+        const mealDateTime = new Date(selectedDate + 'T' + meal.time);
+        const hoursSinceMeal = (currentTime - mealDateTime) / (1000 * 60 * 60);
+
+        if (hoursSinceMeal >= 0 && hoursSinceMeal <= PREDICTION_CARB_LOOKBACK_HOURS) {
+            const mealStats = calculateMealStats(meal.products); // Ensure this returns numeric carbs
+            if (mealStats.carbs > 0) {
+                recentCarbEvents.push({ time: meal.time, carbs: mealStats.carbs, notes: meal.notes || '' });
+            }
+        }
+    });
+
+    if (recentCarbEvents.length > 0) {
+        predictionStatusMessage += `Еда: ${recentCarbEvents.map(e => e.carbs + 'г @' + e.time).join(', ')}. `;
+        recentCarbEvents.sort((a, b) => a.time.localeCompare(b.time)); // Oldest first
+    }
+
+    // Fetch Recent Insulin Events
+    let recentInsulinEvents = [];
+    allDayMeals.forEach(meal => {
+        if (meal.actualInsulin && meal.actualInsulin > 0) {
+            const insulinDateTime = new Date(selectedDate + 'T' + meal.time);
+            const hoursSinceInsulin = (currentTime - insulinDateTime) / (1000 * 60 * 60);
+
+            if (hoursSinceInsulin >= 0 && hoursSinceInsulin <= PREDICTION_INSULIN_LOOKBACK_HOURS) {
+                recentInsulinEvents.push({ time: meal.time, dose: meal.actualInsulin });
+            }
+        }
+    });
+    
+    // Also check for dedicated insulin injections if your data model supports them (not in current scope)
+
+    if (recentInsulinEvents.length > 0) {
+        predictionStatusMessage += `Инсулин: ${recentInsulinEvents.map(e => e.dose + 'ед @' + e.time).join(', ')}. `;
+        recentInsulinEvents.sort((a, b) => a.time.localeCompare(b.time)); // Oldest first
+    }
+
+    // Refine Baseline Glucose (if not found from recent actual)
+    if (baselineGlucose === null) {
+        let earliestActivityTime = null;
+        if (recentCarbEvents.length > 0) {
+            earliestActivityTime = recentCarbEvents[0].time; // Already sorted oldest first
+        }
+        if (recentInsulinEvents.length > 0) {
+            if (earliestActivityTime === null || recentInsulinEvents[0].time < earliestActivityTime) {
+                earliestActivityTime = recentInsulinEvents[0].time; // Already sorted oldest first
+            }
+        }
+
+        if (earliestActivityTime) {
+            const bgInfo = findSugarBeforeMeal(selectedDate, earliestActivityTime); // findSugarBeforeMeal returns {glucose, time} or null
+            if (bgInfo !== null) {
+                baselineGlucose = bgInfo.glucose;
+                baselineGlucoseTime = bgInfo.time;
+                // Prepend as it's the foundational glucose for other events
+                predictionStatusMessage = `СК перед (${earliestActivityTime}): ${baselineGlucose} ммоль/л (${baselineGlucoseTime}). ` + predictionStatusMessage;
+            }
+        }
     }
     
-    if (isPredictionSuperseded(selectedDate, latestMeal.time)) {
-        return; 
-    }
-
-    const sugarBeforeMeal = findSugarBeforeMeal(selectedDate, latestMeal.time);
-    if (sugarBeforeMeal === null) {
-        predictionContextEl.textContent = `Для прогноза нужно измерение сахара не более чем за 1.5ч до еды (${latestMeal.time}).`;
+    // Handle Exit Conditions / Update UI
+    if (baselineGlucose === null) {
+        predictionContextEl.textContent = "Недостаточно данных о глюкозе для прогноза.";
         predictedSugarDisplayEl.textContent = '---';
         predictedSugarSectionEl.style.display = 'block';
         lucide.createIcons();
         return;
     }
 
-    const mealStats = calculateMealStats(latestMeal.products);
-    const totalCarbs = parseFloat(mealStats.carbs);
-    const actualInsulin = latestMeal.actualInsulin || 0; 
-
-    const carbRatio = parseFloat(localStorage.getItem(CR_KEY));
-    const sensitivityFactor = parseFloat(localStorage.getItem(SF_KEY));
-
-    if (isNaN(carbRatio) || isNaN(sensitivityFactor)) {
-        predictionContextEl.textContent = "Коэффициенты УК и ФЧИ не настроены в Калькуляторе.";
+    if (recentCarbEvents.length === 0 && recentInsulinEvents.length === 0 && isToday) { // Only show this if it's today and no recent activity
+        predictionContextEl.textContent = predictionStatusMessage + "Нет недавних данных о еде/инсулине для нового прогноза.";
         predictedSugarDisplayEl.textContent = '---';
         predictedSugarSectionEl.style.display = 'block';
         lucide.createIcons();
         return;
     }
     
-    const predictedSugar = calculateSugarPredictionLogic(sugarBeforeMeal, totalCarbs, actualInsulin, carbRatio, sensitivityFactor);
+    // If not today, and no baseline, we might not want to show anything or a different message
+    // For now, if baselineGlucose is available, it will proceed to show it.
 
-    if (predictedSugar !== null) {
-        predictedSugarDisplayEl.innerHTML = `<span class="${getGlucoseColor(predictedSugar)}">${predictedSugar.toFixed(1)} ммоль/л</span> <span class="text-base font-normal text-gray-500 dark:text-gray-400">(прогноз)</span>`;
-        const predictionValidUntil = new Date(mealDateTime.getTime() + 3 * 60 * 60 * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        predictionContextEl.textContent = `На основе: ${latestMeal.time} (до: ${sugarBeforeMeal} ммоль/л, ${totalCarbs.toFixed(0)}г У, ${actualInsulin.toFixed(1)} ед И). Актуально до ~${predictionValidUntil}.`;
+    const iob = calculateIOB(recentInsulinEvents, currentTime, INSULIN_ACTION_DURATION_HOURS, selectedDate);
+    console.log("Baseline Glucose:", baselineGlucose, "at", baselineGlucoseTime, "Recent Carb Events:", recentCarbEvents, "Recent Insulin Events:", recentInsulinEvents, "Calculated IOB:", iob);
+
+    if (iob > 0) {
+        predictionStatusMessage += ` Активный инсулин (IOB): ${iob.toFixed(1)} ед.`;
+    }
+
+    // Get Coefficients
+    const carbRatioStr = localStorage.getItem(CR_KEY);
+    const sensitivityFactorStr = localStorage.getItem(SF_KEY);
+    const targetSugarStr = localStorage.getItem(TS_KEY); // Not used directly in prediction but good to have
+
+    if (!carbRatioStr || !sensitivityFactorStr) {
+        predictionContextEl.textContent = predictionStatusMessage + " Коэффициенты УК/ФЧИ не настроены.";
+        predictedSugarDisplayEl.textContent = '---';
         predictedSugarSectionEl.style.display = 'block';
+        lucide.createIcons();
+        return;
+    }
+
+    const coeffs = {
+        carbRatio: parseFloat(carbRatioStr),
+        sensitivityFactor: parseFloat(sensitivityFactorStr),
+        targetSugar: parseFloat(targetSugarStr) 
+    };
+
+    if (isNaN(coeffs.carbRatio) || isNaN(coeffs.sensitivityFactor) || coeffs.carbRatio === 0 || coeffs.sensitivityFactor === 0) {
+        predictionContextEl.textContent = predictionStatusMessage + " Ошибка в сохраненных коэффициентах УК/ФЧИ.";
+        predictedSugarDisplayEl.textContent = '---';
+        predictedSugarSectionEl.style.display = 'block';
+        lucide.createIcons();
+        return;
+    }
+
+    // Calculate Advanced Prediction
+    const finalPredictedSugar = calculateAdvancedPrediction(baselineGlucose, recentCarbEvents, iob, coeffs, selectedDate, currentTime);
+
+    if (finalPredictedSugar !== null) {
+        predictedSugarDisplayEl.innerHTML = `<span class="${getGlucoseColor(finalPredictedSugar)}">${finalPredictedSugar.toFixed(1)} ммоль/л</span> <span class="text-base font-normal text-gray-500 dark:text-gray-400">(прогноз)</span>`;
+        predictionContextEl.textContent = predictionStatusMessage.trim() || "Данные для прогноза собраны.";
     } else {
-        predictionContextEl.textContent = "Недостаточно данных для прогноза.";
         predictedSugarDisplayEl.textContent = '---';
-        predictedSugarSectionEl.style.display = 'block';
+        // Corrected typo in the line below
+        predictionContextEl.textContent = (predictionStatusMessage.trim() || "Соберите данные.") + " Не удалось рассчитать прогноз из-за ошибки в коэффициентах.";
     }
+    
+    predictedSugarSectionEl.style.display = 'block';
     lucide.createIcons();
 }
 
