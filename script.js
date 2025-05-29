@@ -322,7 +322,7 @@ const darkModeToggleBtn = document.getElementById('darkModeToggle');
 // --- DOM Elements for Prediction (New) ---
 const predictedSugarSectionEl = document.getElementById('predictedSugarSection');
 const predictedSugarDisplayEl = document.getElementById('predictedSugarDisplay');
-const predictionContextEl = document.getElementById('predictionContext');
+const predictionContextEl = document.getElementById('predictionContextEl'); // Corrected ID
 const correctPredictionBtnEl = document.getElementById('correctPredictionBtn');
 
 
