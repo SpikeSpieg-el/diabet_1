@@ -610,22 +610,44 @@ function renderPredictedCurrentSugar() {
     const PREDICTION_INSULIN_LOOKBACK_HOURS = 4;
     const PREDICTION_RECENT_GLUCOSE_MINUTES = 30; // For using a live BG as baseline
 
-    if (!predictedSugarSectionEl || !predictedSugarDisplayEl || !predictionContextEl) {
-        console.error("Prediction UI elements not found.");
+    // Main UI elements
+    if (!predictedSugarSectionEl || !predictedSugarDisplayEl || !predictionContextEl) { // predictionContextEl is the main div
+        console.error("Main prediction UI elements (section, display, or context div) not found.");
         return;
     }
-    predictedSugarSectionEl.style.display = 'none'; // Hide by default
+
+    // New specific context span elements
+    const pc_status = document.getElementById('pc_status');
+    const pc_baseline = document.getElementById('pc_baseline');
+    const pc_carbs = document.getElementById('pc_carbs');
+    const pc_insulin = document.getElementById('pc_insulin');
+    const pc_iob_element = document.getElementById('pc_iob');
+
+    if (!pc_status || !pc_baseline || !pc_carbs || !pc_insulin || !pc_iob_element) {
+        console.error("One or more new prediction context elements (pc_*) not found.");
+        predictedSugarSectionEl.style.display = 'none'; // Hide section if critical parts are missing
+        return;
+    }
+
+    // Clear previous context and hide section initially
+    predictedSugarSectionEl.style.display = 'none';
+    pc_status.innerHTML = ''; // Use innerHTML for consistency if it ever gets HTML
+    pc_baseline.innerHTML = '';
+    pc_carbs.innerHTML = '';
+    pc_insulin.innerHTML = '';
+    pc_iob_element.innerHTML = '';
+    predictedSugarDisplayEl.innerHTML = '---'; // Use innerHTML for consistency
 
     let baselineGlucose = null;
     let baselineGlucoseTime = null;
-    let predictionStatusMessage = "";
+    // predictionStatusMessage variable is removed.
 
     const currentTime = new Date();
     const todayLocalStr = getLocalDateYYYYMMDD(new Date());
     const isToday = (selectedDate === todayLocalStr);
 
     // Fetch Recent Actual Glucose (as potential baseline)
-    const dayGlucoseData = getDayGlucose(selectedDate).sort((a, b) => b.time.localeCompare(a.time)); // sorted newest first
+    const dayGlucoseData = getDayGlucose(selectedDate).sort((a, b) => b.time.localeCompare(a.time)); 
 
     if (dayGlucoseData.length > 0 && isToday) {
         const latestGlucoseRecord = dayGlucoseData[0];
@@ -635,20 +657,20 @@ function renderPredictedCurrentSugar() {
         if (minutesSinceLatestGlucose >= 0 && minutesSinceLatestGlucose <= PREDICTION_RECENT_GLUCOSE_MINUTES) {
             baselineGlucose = latestGlucoseRecord.glucose;
             baselineGlucoseTime = latestGlucoseRecord.time;
-            predictionStatusMessage += `Недавний СК: ${baselineGlucose} ммоль/л (${baselineGlucoseTime}). `;
+            pc_baseline.innerHTML = `<strong>Недавний СК:</strong> ${baselineGlucose} ммоль/л (${baselineGlucoseTime}).`;
         }
     }
 
     // Fetch Recent Carbohydrate Events
     let recentCarbEvents = [];
-    const allDayMeals = getDayMeals(selectedDate); // Assumes getDayMeals returns meals for the selectedDate
+    const allDayMeals = getDayMeals(selectedDate); 
 
     allDayMeals.forEach(meal => {
         const mealDateTime = new Date(selectedDate + 'T' + meal.time);
         const hoursSinceMeal = (currentTime - mealDateTime) / (1000 * 60 * 60);
 
         if (hoursSinceMeal >= 0 && hoursSinceMeal <= PREDICTION_CARB_LOOKBACK_HOURS) {
-            const mealStats = calculateMealStats(meal.products); // Ensure this returns numeric carbs
+            const mealStats = calculateMealStats(meal.products); 
             if (mealStats.carbs > 0) {
                 recentCarbEvents.push({ time: meal.time, carbs: mealStats.carbs, notes: meal.notes || '' });
             }
@@ -656,8 +678,10 @@ function renderPredictedCurrentSugar() {
     });
 
     if (recentCarbEvents.length > 0) {
-        predictionStatusMessage += `Еда: ${recentCarbEvents.map(e => e.carbs + 'г @' + e.time).join(', ')}. `;
         recentCarbEvents.sort((a, b) => a.time.localeCompare(b.time)); // Oldest first
+        pc_carbs.innerHTML = `<strong>Еда:</strong> ${recentCarbEvents.map(e => e.carbs + 'г @' + e.time).join(' • ')}.`;
+    } else {
+        pc_carbs.innerHTML = ''; // Or "<strong>Еда:</strong> нет недавних записей"
     }
 
     // Fetch Recent Insulin Events
@@ -673,71 +697,67 @@ function renderPredictedCurrentSugar() {
         }
     });
     
-    // Also check for dedicated insulin injections if your data model supports them (not in current scope)
-
     if (recentInsulinEvents.length > 0) {
-        predictionStatusMessage += `Инсулин: ${recentInsulinEvents.map(e => e.dose + 'ед @' + e.time).join(', ')}. `;
         recentInsulinEvents.sort((a, b) => a.time.localeCompare(b.time)); // Oldest first
+        pc_insulin.innerHTML = `<strong>Инсулин:</strong> ${recentInsulinEvents.map(e => e.dose + 'ед @' + e.time).join(' • ')}.`;
+    } else {
+        pc_insulin.innerHTML = ''; // Or "<strong>Инсулин:</strong> нет недавних записей"
     }
 
     // Refine Baseline Glucose (if not found from recent actual)
     if (baselineGlucose === null) {
         let earliestActivityTime = null;
         if (recentCarbEvents.length > 0) {
-            earliestActivityTime = recentCarbEvents[0].time; // Already sorted oldest first
+            earliestActivityTime = recentCarbEvents[0].time; 
         }
         if (recentInsulinEvents.length > 0) {
             if (earliestActivityTime === null || recentInsulinEvents[0].time < earliestActivityTime) {
-                earliestActivityTime = recentInsulinEvents[0].time; // Already sorted oldest first
+                earliestActivityTime = recentInsulinEvents[0].time; 
             }
         }
 
         if (earliestActivityTime) {
-            const bgInfo = findSugarBeforeMeal(selectedDate, earliestActivityTime); // findSugarBeforeMeal returns {glucose, time} or null
+            const bgInfo = findSugarBeforeMeal(selectedDate, earliestActivityTime); 
             if (bgInfo !== null) {
                 baselineGlucose = bgInfo.glucose;
                 baselineGlucoseTime = bgInfo.time;
-                // Prepend as it's the foundational glucose for other events
-                predictionStatusMessage = `СК перед (${earliestActivityTime}): ${baselineGlucose} ммоль/л (${baselineGlucoseTime}). ` + predictionStatusMessage;
+                pc_baseline.innerHTML = `<strong>СК перед (${earliestActivityTime}):</strong> ${baselineGlucose} ммоль/л (${baselineGlucoseTime}).`;
             }
         }
     }
     
-    // Handle Exit Conditions / Update UI
+    // Handle Exit Conditions
     if (baselineGlucose === null) {
-        predictionContextEl.textContent = "Недостаточно данных о глюкозе для прогноза.";
-        predictedSugarDisplayEl.textContent = '---';
+        pc_status.textContent = "Недостаточно данных о глюкозе для прогноза.";
         predictedSugarSectionEl.style.display = 'block';
         lucide.createIcons();
         return;
     }
 
-    if (recentCarbEvents.length === 0 && recentInsulinEvents.length === 0 && isToday) { // Only show this if it's today and no recent activity
-        predictionContextEl.textContent = predictionStatusMessage + "Нет недавних данных о еде/инсулине для нового прогноза.";
-        predictedSugarDisplayEl.textContent = '---';
+    if (recentCarbEvents.length === 0 && recentInsulinEvents.length === 0 && isToday) {
+        pc_status.textContent = "Нет недавних данных о еде/инсулине для нового прогноза.";
+        // pc_baseline might already be populated if there was a recent BG
         predictedSugarSectionEl.style.display = 'block';
         lucide.createIcons();
         return;
     }
     
-    // If not today, and no baseline, we might not want to show anything or a different message
-    // For now, if baselineGlucose is available, it will proceed to show it.
-
     const iob = calculateIOB(recentInsulinEvents, currentTime, INSULIN_ACTION_DURATION_HOURS, selectedDate);
     console.log("Baseline Glucose:", baselineGlucose, "at", baselineGlucoseTime, "Recent Carb Events:", recentCarbEvents, "Recent Insulin Events:", recentInsulinEvents, "Calculated IOB:", iob);
 
     if (iob > 0) {
-        predictionStatusMessage += ` Активный инсулин (IOB): ${iob.toFixed(1)} ед.`;
+        pc_iob_element.innerHTML = `<strong>Активный инсулин (IOB):</strong> ${iob.toFixed(1)} ед.`;
+    } else {
+        pc_iob_element.innerHTML = ''; // Or "<strong>Активный инсулин (IOB):</strong> 0 ед."
     }
 
     // Get Coefficients
     const carbRatioStr = localStorage.getItem(CR_KEY);
     const sensitivityFactorStr = localStorage.getItem(SF_KEY);
-    const targetSugarStr = localStorage.getItem(TS_KEY); // Not used directly in prediction but good to have
+    const targetSugarStr = localStorage.getItem(TS_KEY); 
 
     if (!carbRatioStr || !sensitivityFactorStr) {
-        predictionContextEl.textContent = predictionStatusMessage + " Коэффициенты УК/ФЧИ не настроены.";
-        predictedSugarDisplayEl.textContent = '---';
+        pc_status.textContent = "Коэффициенты УК/ФЧИ не настроены.";
         predictedSugarSectionEl.style.display = 'block';
         lucide.createIcons();
         return;
@@ -750,8 +770,7 @@ function renderPredictedCurrentSugar() {
     };
 
     if (isNaN(coeffs.carbRatio) || isNaN(coeffs.sensitivityFactor) || coeffs.carbRatio === 0 || coeffs.sensitivityFactor === 0) {
-        predictionContextEl.textContent = predictionStatusMessage + " Ошибка в сохраненных коэффициентах УК/ФЧИ.";
-        predictedSugarDisplayEl.textContent = '---';
+        pc_status.textContent = "Ошибка в сохраненных коэффициентах УК/ФЧИ.";
         predictedSugarSectionEl.style.display = 'block';
         lucide.createIcons();
         return;
@@ -762,11 +781,12 @@ function renderPredictedCurrentSugar() {
 
     if (finalPredictedSugar !== null) {
         predictedSugarDisplayEl.innerHTML = `<span class="${getGlucoseColor(finalPredictedSugar)}">${finalPredictedSugar.toFixed(1)} ммоль/л</span> <span class="text-base font-normal text-gray-500 dark:text-gray-400">(прогноз)</span>`;
-        predictionContextEl.textContent = predictionStatusMessage.trim() || "Данные для прогноза собраны.";
+        // pc_status remains empty if prediction is successful, or could hold a general "Прогноз рассчитан"
     } else {
-        predictedSugarDisplayEl.textContent = '---';
-        // Corrected typo in the line below
-        predictionContextEl.textContent = (predictionStatusMessage.trim() || "Соберите данные.") + " Не удалось рассчитать прогноз из-за ошибки в коэффициентах.";
+        // Error during calculateAdvancedPrediction (e.g. bad coeffs already handled by its return null)
+        // This specific message might be redundant if calculateAdvancedPrediction handles its own errors well,
+        // but kept for robustness.
+        pc_status.textContent = "Не удалось рассчитать прогноз из-за ошибки в коэффициентах.";
     }
     
     predictedSugarSectionEl.style.display = 'block';

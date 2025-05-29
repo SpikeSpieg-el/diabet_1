@@ -102,7 +102,13 @@
                     <div id="predictedSugarDisplay" class="text-3xl font-bold mb-1">
                         {/* Prediction will be shown here */}
                     </div>
-                    <p id="predictionContext" class="text-xs text-gray-500 dark:text-gray-400"></p>
+                    <div id="predictionContextEl" class="text-xs text-gray-500 dark:text-gray-400 space-y-1">
+                        <span id="pc_status" class="block error-message"></span>
+                        <span id="pc_baseline" class="block"></span>
+                        <span id="pc_carbs" class="block"></span>
+                        <span id="pc_insulin" class="block"></span>
+                        <span id="pc_iob" class="block"></span>
+                    </div>
                 </div>
 
                 
