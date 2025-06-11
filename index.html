@@ -512,6 +512,27 @@
                         </div>
                     </div>
                     <div>
+                        <label for="openrouterApiKey" class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            <i data-lucide="key-round" class="w-4 h-4 mr-2"></i>
+                            API-ключ OpenRouter
+                        </label>
+                        <input type="password" id="openrouterApiKey" placeholder="Введите ваш API-ключ OpenRouter" class="w-full p-3 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-gray-50 dark:placeholder-gray-400">
+                        <div class="mt-2">
+                            <label for="openrouterModelSelect" class="block text-sm text-gray-600 dark:text-gray-400 mb-1">Выберите модель:</label>
+                            <select id="openrouterModelSelect" class="w-full p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-gray-50">
+                                <option value="deepseek/deepseek-r1-0528-qwen3-8b:free">deepseek/deepseek-r1-0528-qwen3-8b:free</option>
+                                <option value="mistralai/mistral-7b-instruct:free">mistralai/mistral-7b-instruct:free</option>
+                                <option value="google/gemma-7b-it:free">google/gemma-7b-it:free</option>
+                                <option value="anthropic/claude-3-opus:beta">anthropic/claude-3-opus:beta</option>
+                                <option value="anthropic/claude-3-sonnet:beta">anthropic/claude-3-sonnet:beta</option>
+                            </select>
+                        </div>
+                        <div class="mt-2 flex items-center">
+                            <input type="radio" id="defaultOpenrouter" name="defaultModel" value="openrouter" class="w-4 h-4 text-blue-600">
+                            <label for="defaultOpenrouter" class="ml-2 text-sm text-gray-600 dark:text-gray-400">Использовать по умолчанию</label>
+                        </div>
+                    </div>
+                    <div>
                         <label for="lmStudioUrl" class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             <i data-lucide="server" class="w-4 h-4 mr-2"></i>
                             Локальная модель (LM Studio)

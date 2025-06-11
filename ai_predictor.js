@@ -5,6 +5,8 @@ const GEMINI_API_KEY_NAME = 'diaryApp_geminiApiKey';
 const LM_STUDIO_URL_NAME = 'diaryApp_lmStudioUrl';
 const DEEPSEEK_API_KEY_NAME = 'diaryApp_deepseekApiKey';
 const CHATGPT_API_KEY_NAME = 'diaryApp_chatgptApiKey';
+const OPENROUTER_API_KEY_NAME = 'diaryApp_openrouterApiKey';
+const OPENROUTER_MODEL_NAME = 'diaryApp_openrouterModel';
 const DEFAULT_MODEL_NAME = 'diaryApp_defaultAiModel';
 const SELECTED_LOCAL_MODEL_NAME = 'diaryApp_selectedLocalModel';
 
@@ -178,10 +180,12 @@ async function getAIPrediction(dataForPrompt) {
     const lmStudioUrl = localStorage.getItem(LM_STUDIO_URL_NAME);
     const deepseekApiKey = localStorage.getItem(DEEPSEEK_API_KEY_NAME);
     const chatgptApiKey = localStorage.getItem(CHATGPT_API_KEY_NAME);
+    const openrouterApiKey = localStorage.getItem(OPENROUTER_API_KEY_NAME);
+    const openrouterModel = localStorage.getItem(OPENROUTER_MODEL_NAME) || 'deepseek/deepseek-r1-0528-qwen3-8b:free';
     const defaultModel = localStorage.getItem(DEFAULT_MODEL_NAME) || 'gemini';
     const selectedLocalModel = localStorage.getItem(SELECTED_LOCAL_MODEL_NAME);
 
-    if (!geminiApiKey && !lmStudioUrl && !deepseekApiKey && !chatgptApiKey) {
+    if (!geminiApiKey && !lmStudioUrl && !deepseekApiKey && !chatgptApiKey && !openrouterApiKey) {
         return { success: false, error: "API для ИИ-помощника не настроен. Зайдите в настройки." };
     }
 
@@ -191,7 +195,32 @@ async function getAIPrediction(dataForPrompt) {
         let response;
         
         // Сначала пробуем использовать модель по умолчанию
-        if (defaultModel === 'local' && lmStudioUrl) {
+        if (defaultModel === 'openrouter' && openrouterApiKey) {
+            response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${openrouterApiKey}`,
+                    'HTTP-Referer': window.location.origin,
+                    'X-Title': 'Diary App'
+                },
+                body: JSON.stringify({
+                    model: openrouterModel,
+                    messages: [
+                        {
+                            role: 'system',
+                            content: 'Вы - медицинский ассистент, специализирующийся на диабете. Ваша задача - анализировать данные о питании, уровне глюкозы и инсулине, чтобы давать точные прогнозы и рекомендации.'
+                        },
+                        {
+                            role: 'user',
+                            content: prompt
+                        }
+                    ],
+                    temperature: 0.7,
+                    response_format: { type: "json_object" }
+                })
+            });
+        } else if (defaultModel === 'local' && lmStudioUrl) {
             try {
                 response = await fetch(lmStudioUrl + "/chat/completions", {
                     method: 'POST',
@@ -269,7 +298,32 @@ async function getAIPrediction(dataForPrompt) {
             });
         } else {
             // Если модель по умолчанию недоступна, пробуем другие
-            if (chatgptApiKey) {
+            if (openrouterApiKey) {
+                response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${openrouterApiKey}`,
+                        'HTTP-Referer': window.location.origin,
+                        'X-Title': 'Diary App'
+                    },
+                    body: JSON.stringify({
+                        model: openrouterModel,
+                        messages: [
+                            {
+                                role: 'system',
+                                content: 'Вы - медицинский ассистент, специализирующийся на диабете. Ваша задача - анализировать данные о питании, уровне глюкозы и инсулине, чтобы давать точные прогнозы и рекомендации.'
+                            },
+                            {
+                                role: 'user',
+                                content: prompt
+                            }
+                        ],
+                        temperature: 0.7,
+                        response_format: { type: "json_object" }
+                    })
+                });
+            } else if (chatgptApiKey) {
                 response = await fetch('https://api.openai.com/v1/chat/completions', {
                     method: 'POST',
                     headers: {
@@ -357,7 +411,9 @@ async function getAIPrediction(dataForPrompt) {
         
         // Парсим ответ в зависимости от API
         let aiContent;
-        if (defaultModel === 'chatgpt' || (defaultModel !== 'gemini' && chatgptApiKey)) {
+        if (defaultModel === 'openrouter' || (defaultModel !== 'gemini' && openrouterApiKey)) {
+            aiContent = responseData.choices[0].message.content;
+        } else if (defaultModel === 'chatgpt' || (defaultModel !== 'gemini' && chatgptApiKey)) {
             aiContent = responseData.choices[0].message.content;
         } else if (defaultModel === 'deepseek' || (defaultModel !== 'gemini' && deepseekApiKey)) {
             aiContent = responseData.choices[0].message.content;
@@ -374,7 +430,24 @@ async function getAIPrediction(dataForPrompt) {
         const jsonString = aiContent.replace(/```json/g, '').replace(/```/g, '').trim();
         const parsedResult = JSON.parse(jsonString);
 
-        return { success: true, data: parsedResult };
+        // Проверяем наличие и корректность прогнозируемого значения
+        if (!parsedResult.predicted_sugar || typeof parsedResult.predicted_sugar !== 'number') {
+            throw new Error("ИИ вернул некорректный формат прогноза. Ожидалось числовое значение в поле predicted_sugar.");
+        }
+
+        // Проверяем, что прогноз находится в разумных пределах
+        if (parsedResult.predicted_sugar < 1 || parsedResult.predicted_sugar > 30) {
+            throw new Error("ИИ вернул прогноз за пределами разумного диапазона (1-30 ммоль/л).");
+        }
+
+        return { 
+            success: true, 
+            data: {
+                predicted_sugar: parsedResult.predicted_sugar,
+                explanation: parsedResult.explanation || "Нет объяснения",
+                recommendation: parsedResult.recommendation || "Нет рекомендаций"
+            }
+        };
 
     } catch (error) {
         console.error("Ошибка при запросе к ИИ:", error);
@@ -382,7 +455,7 @@ async function getAIPrediction(dataForPrompt) {
         
         // Добавляем более подробное сообщение для CORS ошибки
         if (error instanceof TypeError && error.message.includes('CORS')) {
-            errorMessage = `<b>Ошибка CORS при подключении к локальному серверу.</b><br><br>
+            errorMessage = `<b>Ошибка CORS при подключении к серверу.</b><br><br>
                 <strong>Пожалуйста, проверьте:</strong>
                 <ul>
                     <li class="mb-1">В LM Studio включен CORS (Settings -> Server -> Enable CORS)</li>

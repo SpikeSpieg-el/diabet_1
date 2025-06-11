@@ -2143,6 +2143,8 @@ async function saveAiSettings(event) {
     const geminiApiKey = document.getElementById('geminiApiKey').value;
     const deepseekApiKey = document.getElementById('deepseekApiKey').value;
     const chatgptApiKey = document.getElementById('chatgptApiKey').value;
+    const openrouterApiKey = document.getElementById('openrouterApiKey').value;
+    const openrouterModel = document.getElementById('openrouterModelSelect').value;
     const lmStudioUrl = document.getElementById('lmStudioUrl').value;
     const selectedLocalModel = document.getElementById('localModelSelect').value;
     
@@ -2154,6 +2156,8 @@ async function saveAiSettings(event) {
     localStorage.setItem('diaryApp_geminiApiKey', geminiApiKey);
     localStorage.setItem('diaryApp_deepseekApiKey', deepseekApiKey);
     localStorage.setItem('diaryApp_chatgptApiKey', chatgptApiKey);
+    localStorage.setItem('diaryApp_openrouterApiKey', openrouterApiKey);
+    localStorage.setItem('diaryApp_openrouterModel', openrouterModel);
     localStorage.setItem('diaryApp_lmStudioUrl', lmStudioUrl);
     localStorage.setItem('diaryApp_defaultAiModel', defaultModel);
     localStorage.setItem('diaryApp_selectedLocalModel', selectedLocalModel);
@@ -2171,12 +2175,16 @@ function loadAiSettings() {
     const geminiApiKey = localStorage.getItem('diaryApp_geminiApiKey') || '';
     const deepseekApiKey = localStorage.getItem('diaryApp_deepseekApiKey') || '';
     const chatgptApiKey = localStorage.getItem('diaryApp_chatgptApiKey') || '';
+    const openrouterApiKey = localStorage.getItem('diaryApp_openrouterApiKey') || '';
+    const openrouterModel = localStorage.getItem('diaryApp_openrouterModel') || 'deepseek/deepseek-r1-0528-qwen3-8b:free';
     const lmStudioUrl = localStorage.getItem('diaryApp_lmStudioUrl') || '';
     const defaultModel = localStorage.getItem('diaryApp_defaultAiModel') || 'gemini';
     
     document.getElementById('geminiApiKey').value = geminiApiKey;
     document.getElementById('deepseekApiKey').value = deepseekApiKey;
     document.getElementById('chatgptApiKey').value = chatgptApiKey;
+    document.getElementById('openrouterApiKey').value = openrouterApiKey;
+    document.getElementById('openrouterModelSelect').value = openrouterModel;
     document.getElementById('lmStudioUrl').value = lmStudioUrl;
     
     // Устанавливаем выбранную модель по умолчанию
