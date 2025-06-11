@@ -2136,3 +2136,176 @@ if (requestAiPredictionBtn) {
         }
     });
 }
+
+async function saveAiSettings(event) {
+    event.preventDefault();
+    
+    const geminiApiKey = document.getElementById('geminiApiKey').value;
+    const deepseekApiKey = document.getElementById('deepseekApiKey').value;
+    const chatgptApiKey = document.getElementById('chatgptApiKey').value;
+    const lmStudioUrl = document.getElementById('lmStudioUrl').value;
+    const selectedLocalModel = document.getElementById('localModelSelect').value;
+    
+    // Получаем выбранную модель по умолчанию
+    const defaultModelRadio = document.querySelector('input[name="defaultModel"]:checked');
+    const defaultModel = defaultModelRadio ? defaultModelRadio.value : 'gemini';
+    
+    // Сохраняем настройки
+    localStorage.setItem('diaryApp_geminiApiKey', geminiApiKey);
+    localStorage.setItem('diaryApp_deepseekApiKey', deepseekApiKey);
+    localStorage.setItem('diaryApp_chatgptApiKey', chatgptApiKey);
+    localStorage.setItem('diaryApp_lmStudioUrl', lmStudioUrl);
+    localStorage.setItem('diaryApp_defaultAiModel', defaultModel);
+    localStorage.setItem('diaryApp_selectedLocalModel', selectedLocalModel);
+    
+    // Обновляем список моделей при сохранении
+    if (lmStudioUrl) {
+        await updateLocalModelsList(lmStudioUrl);
+    }
+    
+    showAlertPopup('Настройки ИИ-помощника сохранены', 'success');
+    closeModal(document.getElementById('aiSettingsModal'));
+}
+
+function loadAiSettings() {
+    const geminiApiKey = localStorage.getItem('diaryApp_geminiApiKey') || '';
+    const deepseekApiKey = localStorage.getItem('diaryApp_deepseekApiKey') || '';
+    const chatgptApiKey = localStorage.getItem('diaryApp_chatgptApiKey') || '';
+    const lmStudioUrl = localStorage.getItem('diaryApp_lmStudioUrl') || '';
+    const defaultModel = localStorage.getItem('diaryApp_defaultAiModel') || 'gemini';
+    
+    document.getElementById('geminiApiKey').value = geminiApiKey;
+    document.getElementById('deepseekApiKey').value = deepseekApiKey;
+    document.getElementById('chatgptApiKey').value = chatgptApiKey;
+    document.getElementById('lmStudioUrl').value = lmStudioUrl;
+    
+    // Устанавливаем выбранную модель по умолчанию
+    const defaultModelRadio = document.getElementById(`default${defaultModel.charAt(0).toUpperCase() + defaultModel.slice(1)}`);
+    if (defaultModelRadio) {
+        defaultModelRadio.checked = true;
+    }
+
+    // Загружаем список моделей, если URL указан
+    if (lmStudioUrl) {
+        updateLocalModelsList(lmStudioUrl);
+    }
+}
+
+// Добавляем обработчик изменения URL
+document.getElementById('lmStudioUrl').addEventListener('change', function() {
+    const url = this.value.trim();
+    if (url) {
+        updateLocalModelsList(url);
+    }
+});
+
+// Добавляем обработчик выбора модели
+document.getElementById('localModelSelect').addEventListener('change', function() {
+    localStorage.setItem('diaryApp_selectedLocalModel', this.value);
+});
+
+// Обновляем функцию запроса прогноза от ИИ
+async function requestAiPrediction() {
+    const deepseekApiKey = localStorage.getItem('deepseekApiKey');
+    const geminiApiKey = localStorage.getItem('geminiApiKey');
+    const lmStudioUrl = localStorage.getItem('lmStudioUrl');
+    const defaultModel = localStorage.getItem('defaultAiModel') || 'gemini';
+
+    if (!deepseekApiKey && !geminiApiKey && !lmStudioUrl) {
+        showAlertPopup('Пожалуйста, настройте хотя бы один источник ИИ в настройках', 'warning');
+        return;
+    }
+
+    try {
+        const selectedDate = getLocalDateYYYYMMDD(selectedDate);
+        const currentTime = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+        
+        // Собираем данные для анализа
+        const recentMeals = getDayMeals(selectedDate);
+        const recentGlucose = getDayGlucose(selectedDate);
+        const coeffs = getCoefficientsForCalculation();
+        
+        const prompt = `Проанализируйте следующие данные и дайте прогноз уровня глюкозы на ближайшие 2 часа:
+            Дата: ${selectedDate}
+            Текущее время: ${currentTime}
+            Последние приемы пищи: ${JSON.stringify(recentMeals)}
+            Последние измерения глюкозы: ${JSON.stringify(recentGlucose)}
+            Коэффициенты: ${JSON.stringify(coeffs)}
+            Пожалуйста, дайте краткий прогноз и рекомендации.`;
+
+        let prediction;
+        
+        // Сначала пробуем использовать модель по умолчанию
+        if (defaultModel === 'deepseek' && deepseekApiKey) {
+            prediction = await getDeepseekPrediction(prompt);
+        } else if (defaultModel === 'gemini' && geminiApiKey) {
+            prediction = await getGeminiPrediction(prompt);
+        } else if (defaultModel === 'local' && lmStudioUrl) {
+            prediction = await getLocalModelPrediction(prompt);
+        } else {
+            // Если модель по умолчанию недоступна, пробуем другие
+            if (deepseekApiKey) {
+                prediction = await getDeepseekPrediction(prompt);
+            } else if (geminiApiKey) {
+                prediction = await getGeminiPrediction(prompt);
+            } else if (lmStudioUrl) {
+                prediction = await getLocalModelPrediction(prompt);
+            }
+        }
+
+        const resultContainer = document.getElementById('aiPredictionResultText');
+        resultContainer.textContent = prediction;
+        resultContainer.style.display = 'block';
+        
+    } catch (error) {
+        console.error('Ошибка при получении прогноза:', error);
+        showAlertPopup('Ошибка при получении прогноза от ИИ', 'error');
+    }
+}
+
+// Добавляем вызов загрузки настроек при открытии модального окна
+function openAiSettingsModal() {
+    loadAiSettings();
+    openModal(document.getElementById('aiSettingsModal'));
+}
+
+async function getDeepseekPrediction(prompt) {
+    const apiKey = localStorage.getItem('deepseekApiKey');
+    if (!apiKey) {
+        throw new Error('API ключ DeepSeek не настроен');
+    }
+
+    try {
+        const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: 'deepseek-chat',
+                messages: [
+                    {
+                        role: 'system',
+                        content: 'Вы - медицинский ассистент, специализирующийся на диабете. Ваша задача - анализировать данные о питании, уровне глюкозы и инсулине, чтобы давать точные прогнозы и рекомендации.'
+                    },
+                    {
+                        role: 'user',
+                        content: prompt
+                    }
+                ],
+                stream: false
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Ошибка API: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data.choices[0].message.content;
+    } catch (error) {
+        console.error('Ошибка при запросе к DeepSeek API:', error);
+        throw error;
+    }
+}

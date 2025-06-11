@@ -484,6 +484,32 @@
                             API-ключ Google Gemini
                         </label>
                         <input type="password" id="geminiApiKey" placeholder="Введите ваш API-ключ" class="w-full p-3 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-gray-50 dark:placeholder-gray-400">
+                        <div class="mt-2 flex items-center">
+                            <input type="radio" id="defaultGemini" name="defaultModel" value="gemini" class="w-4 h-4 text-blue-600">
+                            <label for="defaultGemini" class="ml-2 text-sm text-gray-600 dark:text-gray-400">Использовать по умолчанию</label>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="deepseekApiKey" class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            <i data-lucide="key-round" class="w-4 h-4 mr-2"></i>
+                            API-ключ DeepSeek
+                        </label>
+                        <input type="password" id="deepseekApiKey" placeholder="Введите ваш API-ключ DeepSeek" class="w-full p-3 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-gray-50 dark:placeholder-gray-400">
+                        <div class="mt-2 flex items-center">
+                            <input type="radio" id="defaultDeepseek" name="defaultModel" value="deepseek" class="w-4 h-4 text-blue-600">
+                            <label for="defaultDeepseek" class="ml-2 text-sm text-gray-600 dark:text-gray-400">Использовать по умолчанию</label>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="chatgptApiKey" class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            <i data-lucide="key-round" class="w-4 h-4 mr-2"></i>
+                            API-ключ ChatGPT
+                        </label>
+                        <input type="password" id="chatgptApiKey" placeholder="Введите ваш API-ключ ChatGPT" class="w-full p-3 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-gray-50 dark:placeholder-gray-400">
+                        <div class="mt-2 flex items-center">
+                            <input type="radio" id="defaultChatgpt" name="defaultModel" value="chatgpt" class="w-4 h-4 text-blue-600">
+                            <label for="defaultChatgpt" class="ml-2 text-sm text-gray-600 dark:text-gray-400">Использовать по умолчанию</label>
+                        </div>
                     </div>
                     <div>
                         <label for="lmStudioUrl" class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -491,6 +517,16 @@
                             Локальная модель (LM Studio)
                         </label>
                         <input type="text" id="lmStudioUrl" placeholder="http://localhost:1234/v1" class="w-full p-3 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-gray-50 dark:placeholder-gray-400">
+                        <div class="mt-2">
+                            <label for="localModelSelect" class="block text-sm text-gray-600 dark:text-gray-400 mb-1">Выберите модель:</label>
+                            <select id="localModelSelect" class="w-full p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-gray-50">
+                                <option value="">Загрузка моделей...</option>
+                            </select>
+                        </div>
+                        <div class="mt-2 flex items-center">
+                            <input type="radio" id="defaultLocal" name="defaultModel" value="local" class="w-4 h-4 text-blue-600">
+                            <label for="defaultLocal" class="ml-2 text-sm text-gray-600 dark:text-gray-400">Использовать по умолчанию</label>
+                        </div>
                     </div>
                     <div class="flex space-x-3 pt-4">
                         <button type="submit" id="saveAiSettingsBtn" class="flex-1 bg-purple-500 text-white py-2 rounded-lg hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700 transition-colors">Сохранить</button>

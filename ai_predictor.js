@@ -3,6 +3,86 @@
 // Константы для ключей в localStorage
 const GEMINI_API_KEY_NAME = 'diaryApp_geminiApiKey';
 const LM_STUDIO_URL_NAME = 'diaryApp_lmStudioUrl';
+const DEEPSEEK_API_KEY_NAME = 'diaryApp_deepseekApiKey';
+const CHATGPT_API_KEY_NAME = 'diaryApp_chatgptApiKey';
+const DEFAULT_MODEL_NAME = 'diaryApp_defaultAiModel';
+const SELECTED_LOCAL_MODEL_NAME = 'diaryApp_selectedLocalModel';
+
+/**
+ * Получает список доступных моделей с локального сервера
+ * @param {string} baseUrl - Базовый URL сервера
+ * @returns {Promise<string[]>} - Список доступных моделей
+ */
+async function getAvailableModels(baseUrl) {
+    try {
+        // Убираем /v1 из URL для запроса моделей
+        const modelsUrl = baseUrl.replace('/v1', '') + '/models';
+        console.log('Запрос моделей по URL:', modelsUrl);
+
+        const response = await fetch(modelsUrl, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            mode: 'cors',
+            credentials: 'omit'
+        });
+
+        if (!response.ok) {
+            throw new Error(`Ошибка получения списка моделей: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log('Полученные модели:', data);
+        
+        if (!data.data || !Array.isArray(data.data)) {
+            throw new Error('Неверный формат ответа от сервера');
+        }
+
+        return data.data.map(model => model.id);
+    } catch (error) {
+        console.error('Ошибка при получении списка моделей:', error);
+        // Возвращаем список с вашей моделью по умолчанию
+        return ['gemma-3-4b-it'];
+    }
+}
+
+/**
+ * Обновляет список доступных моделей в селекте
+ * @param {string} baseUrl - Базовый URL сервера
+ */
+async function updateLocalModelsList(baseUrl) {
+    const modelSelect = document.getElementById('localModelSelect');
+    if (!modelSelect) return;
+
+    try {
+        modelSelect.innerHTML = '<option value="">Загрузка моделей...</option>';
+        const models = await getAvailableModels(baseUrl);
+        
+        if (models.length === 0) {
+            modelSelect.innerHTML = '<option value="">Нет доступных моделей</option>';
+            return;
+        }
+
+        const selectedModel = localStorage.getItem(SELECTED_LOCAL_MODEL_NAME) || 'gemma-3-4b-it';
+        
+        modelSelect.innerHTML = models.map(model => 
+            `<option value="${model}" ${model === selectedModel ? 'selected' : ''}>${model}</option>`
+        ).join('');
+
+        // Если выбранная модель не найдена в списке, выбираем первую доступную
+        if (!models.includes(selectedModel)) {
+            modelSelect.value = models[0];
+            localStorage.setItem(SELECTED_LOCAL_MODEL_NAME, models[0]);
+        }
+    } catch (error) {
+        console.error('Ошибка при обновлении списка моделей:', error);
+        // В случае ошибки показываем вашу модель по умолчанию
+        modelSelect.innerHTML = '<option value="gemma-3-4b-it" selected>gemma-3-4b-it</option>';
+        localStorage.setItem(SELECTED_LOCAL_MODEL_NAME, 'gemma-3-4b-it');
+    }
+}
 
 /**
  * Формирует промпт для языковой модели.
@@ -96,8 +176,12 @@ ${timelineString}
 async function getAIPrediction(dataForPrompt) {
     const geminiApiKey = localStorage.getItem(GEMINI_API_KEY_NAME);
     const lmStudioUrl = localStorage.getItem(LM_STUDIO_URL_NAME);
+    const deepseekApiKey = localStorage.getItem(DEEPSEEK_API_KEY_NAME);
+    const chatgptApiKey = localStorage.getItem(CHATGPT_API_KEY_NAME);
+    const defaultModel = localStorage.getItem(DEFAULT_MODEL_NAME) || 'gemini';
+    const selectedLocalModel = localStorage.getItem(SELECTED_LOCAL_MODEL_NAME);
 
-    if (!geminiApiKey && !lmStudioUrl) {
+    if (!geminiApiKey && !lmStudioUrl && !deepseekApiKey && !chatgptApiKey) {
         return { success: false, error: "API для ИИ-помощника не настроен. Зайдите в настройки." };
     }
 
@@ -105,9 +189,77 @@ async function getAIPrediction(dataForPrompt) {
     
     try {
         let response;
-        if (geminiApiKey) {
-            // Используем Google Gemini API (стабильная версия v1)
-            // ИСПРАВЛЕНИЕ: Имя модели изменено на 'gemini-2.0-flash' для корректной работы с API.
+        
+        // Сначала пробуем использовать модель по умолчанию
+        if (defaultModel === 'local' && lmStudioUrl) {
+            try {
+                response = await fetch(lmStudioUrl + "/chat/completions", {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: selectedLocalModel || "local-model",
+                        messages: [{ "role": "user", "content": prompt }],
+                        temperature: 0.7,
+                        response_format: { "type": "json_object" }
+                    })
+                });
+            } catch (error) {
+                console.error("Ошибка при подключении к локальному серверу:", error);
+                throw new Error(`Ошибка подключения к локальному серверу. Убедитесь, что:
+                    1. LM Studio запущен и сервер активен
+                    2. URL в настройках указан верно (http://localhost:1234/v1)
+                    3. В LM Studio включен CORS (Settings -> Server -> Enable CORS)
+                    4. Порт 1234 не занят другим приложением`);
+            }
+        } else if (defaultModel === 'chatgpt' && chatgptApiKey) {
+            response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${chatgptApiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'gpt-4',
+                    messages: [
+                        {
+                            role: 'system',
+                            content: 'Вы - медицинский ассистент, специализирующийся на диабете. Ваша задача - анализировать данные о питании, уровне глюкозы и инсулине, чтобы давать точные прогнозы и рекомендации.'
+                        },
+                        {
+                            role: 'user',
+                            content: prompt
+                        }
+                    ],
+                    temperature: 0.7,
+                    response_format: { type: "json_object" }
+                })
+            });
+        } else if (defaultModel === 'deepseek' && deepseekApiKey) {
+            response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${deepseekApiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'deepseek-chat',
+                    messages: [
+                        {
+                            role: 'system',
+                            content: 'Вы - медицинский ассистент, специализирующийся на диабете. Ваша задача - анализировать данные о питании, уровне глюкозы и инсулине, чтобы давать точные прогнозы и рекомендации.'
+                        },
+                        {
+                            role: 'user',
+                            content: prompt
+                        }
+                    ],
+                    stream: false
+                })
+            });
+        } else if (defaultModel === 'gemini' && geminiApiKey) {
             response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -116,18 +268,84 @@ async function getAIPrediction(dataForPrompt) {
                 })
             });
         } else {
-            // Используем локальный сервер LM Studio (OpenAI-совместимый)
-            response = await fetch(lmStudioUrl + "/chat/completions", {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    model: "local-model", // Это поле часто игнорируется, но может быть полезным
-                    messages: [{ "role": "user", "content": prompt }],
-                    temperature: 0.7,
-                    // Примечание: для работы этого параметра загруженная в LM Studio модель должна поддерживать JSON-режим.
-                    response_format: { "type": "json_object" } 
-                })
-            });
+            // Если модель по умолчанию недоступна, пробуем другие
+            if (chatgptApiKey) {
+                response = await fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${chatgptApiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: 'gpt-4',
+                        messages: [
+                            {
+                                role: 'system',
+                                content: 'Вы - медицинский ассистент, специализирующийся на диабете. Ваша задача - анализировать данные о питании, уровне глюкозы и инсулине, чтобы давать точные прогнозы и рекомендации.'
+                            },
+                            {
+                                role: 'user',
+                                content: prompt
+                            }
+                        ],
+                        temperature: 0.7,
+                        response_format: { type: "json_object" }
+                    })
+                });
+            } else if (deepseekApiKey) {
+                response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${deepseekApiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: 'deepseek-chat',
+                        messages: [
+                            {
+                                role: 'system',
+                                content: 'Вы - медицинский ассистент, специализирующийся на диабете. Ваша задача - анализировать данные о питании, уровне глюкозы и инсулине, чтобы давать точные прогнозы и рекомендации.'
+                            },
+                            {
+                                role: 'user',
+                                content: prompt
+                            }
+                        ],
+                        stream: false
+                    })
+                });
+            } else if (geminiApiKey) {
+                response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }]
+                    })
+                });
+            } else if (lmStudioUrl) {
+                try {
+                    response = await fetch(lmStudioUrl + "/chat/completions", {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            model: "local-model",
+                            messages: [{ "role": "user", "content": prompt }],
+                            temperature: 0.7,
+                            response_format: { "type": "json_object" }
+                        })
+                    });
+                } catch (error) {
+                    console.error("Ошибка при подключении к локальному серверу:", error);
+                    throw new Error(`Ошибка подключения к локальному серверу. Убедитесь, что:
+                        1. LM Studio запущен и сервер активен
+                        2. URL в настройках указан верно (http://localhost:1234/v1)
+                        3. В LM Studio включен CORS (Settings -> Server -> Enable CORS)
+                        4. Порт 1234 не занят другим приложением`);
+                }
+            }
         }
 
         if (!response.ok) {
@@ -139,10 +357,13 @@ async function getAIPrediction(dataForPrompt) {
         
         // Парсим ответ в зависимости от API
         let aiContent;
-        if (geminiApiKey) {
-            // Handle potential empty candidates array
+        if (defaultModel === 'chatgpt' || (defaultModel !== 'gemini' && chatgptApiKey)) {
+            aiContent = responseData.choices[0].message.content;
+        } else if (defaultModel === 'deepseek' || (defaultModel !== 'gemini' && deepseekApiKey)) {
+            aiContent = responseData.choices[0].message.content;
+        } else if (defaultModel === 'gemini' || (defaultModel !== 'deepseek' && geminiApiKey)) {
             if (!responseData.candidates || responseData.candidates.length === 0) {
-                 throw new Error("Gemini API вернул пустой ответ (no candidates). Возможно, сработал фильтр безопасности.");
+                throw new Error("Gemini API вернул пустой ответ (no candidates). Возможно, сработал фильтр безопасности.");
             }
             aiContent = responseData.candidates[0].content.parts[0].text;
         } else {
@@ -158,9 +379,27 @@ async function getAIPrediction(dataForPrompt) {
     } catch (error) {
         console.error("Ошибка при запросе к ИИ:", error);
         let errorMessage = `Не удалось получить ответ от ИИ. ${error.message}`;
-        // Добавляем более подробное сообщение для самой частой сетевой ошибки
-        if (error instanceof TypeError && error.message === 'Failed to fetch') {
-            errorMessage = `<b>Сетевая ошибка: не удалось подключиться к серверу.</b><br><br><strong>Пожалуйста, проверьте:</strong><ul><li class="mb-1">Запущен ли сервер в LM Studio?</li><li class="mb-1">Правильно ли указан URL в настройках? (Стандартный: <code>http://localhost:1234/v1</code>)</li><li>Не блокирует ли соединение ваш файрвол?</li></ul>`;
+        
+        // Добавляем более подробное сообщение для CORS ошибки
+        if (error instanceof TypeError && error.message.includes('CORS')) {
+            errorMessage = `<b>Ошибка CORS при подключении к локальному серверу.</b><br><br>
+                <strong>Пожалуйста, проверьте:</strong>
+                <ul>
+                    <li class="mb-1">В LM Studio включен CORS (Settings -> Server -> Enable CORS)</li>
+                    <li class="mb-1">URL в настройках указан верно (http://localhost:1234/v1)</li>
+                    <li class="mb-1">LM Studio запущен и сервер активен</li>
+                    <li>Порт 1234 не занят другим приложением</li>
+                </ul>`;
+        }
+        // Добавляем более подробное сообщение для сетевой ошибки
+        else if (error instanceof TypeError && error.message === 'Failed to fetch') {
+            errorMessage = `<b>Сетевая ошибка: не удалось подключиться к серверу.</b><br><br>
+                <strong>Пожалуйста, проверьте:</strong>
+                <ul>
+                    <li class="mb-1">LM Studio запущен и сервер активен</li>
+                    <li class="mb-1">URL в настройках указан верно (http://localhost:1234/v1)</li>
+                    <li>Не блокирует ли соединение ваш файрвол?</li>
+                </ul>`;
         }
         return { success: false, error: errorMessage };
     }
