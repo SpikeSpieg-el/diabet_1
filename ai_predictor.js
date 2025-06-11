@@ -106,8 +106,9 @@ async function getAIPrediction(dataForPrompt) {
     try {
         let response;
         if (geminiApiKey) {
-            // Используем Google Gemini API
-            response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiApiKey}`, {
+            // Используем Google Gemini API (стабильная версия v1)
+            // ИСПРАВЛЕНИЕ: Имя модели изменено на 'gemini-2.0-flash' для корректной работы с API.
+            response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -123,7 +124,8 @@ async function getAIPrediction(dataForPrompt) {
                     model: "local-model", // Это поле часто игнорируется, но может быть полезным
                     messages: [{ "role": "user", "content": prompt }],
                     temperature: 0.7,
-                    response_format: { "type": "json_object" } // Просим JSON
+                    // Примечание: для работы этого параметра загруженная в LM Studio модель должна поддерживать JSON-режим.
+                    response_format: { "type": "json_object" } 
                 })
             });
         }
@@ -138,6 +140,10 @@ async function getAIPrediction(dataForPrompt) {
         // Парсим ответ в зависимости от API
         let aiContent;
         if (geminiApiKey) {
+            // Handle potential empty candidates array
+            if (!responseData.candidates || responseData.candidates.length === 0) {
+                 throw new Error("Gemini API вернул пустой ответ (no candidates). Возможно, сработал фильтр безопасности.");
+            }
             aiContent = responseData.candidates[0].content.parts[0].text;
         } else {
             aiContent = responseData.choices[0].message.content;
@@ -151,6 +157,11 @@ async function getAIPrediction(dataForPrompt) {
 
     } catch (error) {
         console.error("Ошибка при запросе к ИИ:", error);
-        return { success: false, error: `Не удалось получить ответ от ИИ. ${error.message}` };
+        let errorMessage = `Не удалось получить ответ от ИИ. ${error.message}`;
+        // Добавляем более подробное сообщение для самой частой сетевой ошибки
+        if (error instanceof TypeError && error.message === 'Failed to fetch') {
+            errorMessage = `<b>Сетевая ошибка: не удалось подключиться к серверу.</b><br><br><strong>Пожалуйста, проверьте:</strong><ul><li class="mb-1">Запущен ли сервер в LM Studio?</li><li class="mb-1">Правильно ли указан URL в настройках? (Стандартный: <code>http://localhost:1234/v1</code>)</li><li>Не блокирует ли соединение ваш файрвол?</li></ul>`;
+        }
+        return { success: false, error: errorMessage };
     }
 }
