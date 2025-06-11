@@ -473,12 +473,23 @@
             </div>
         </div>
 
-        <!-- Модальное окно настроек ИИ-помощника (НОВОЕ) -->
+        <!-- Модальное окно настроек ИИ-помощника -->
         <div id="aiSettingsModal" class="modal fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 items-center justify-center p-4 z-50">
             <div class="bg-white rounded-xl p-6 w-full max-w-md dark:bg-slate-800">
                 <h3 class="text-lg font-semibold mb-6 dark:text-gray-100">Настройки ИИ-помощника</h3>
+                
+                <!-- Кнопки выбора API -->
+                <div class="api-selector-buttons mb-4 flex flex-wrap gap-2">
+                    <button type="button" class="api-selector-btn" data-api="gemini">Gemini</button>
+                    <button type="button" class="api-selector-btn" data-api="deepseek">DeepSeek</button>
+                    <button type="button" class="api-selector-btn" data-api="chatgpt">ChatGPT</button>
+                    <button type="button" class="api-selector-btn" data-api="openrouter">OpenRouter</button>
+                    <button type="button" class="api-selector-btn" data-api="local">LM Studio</button>
+                </div>
+
                 <form id="aiSettingsForm" class="space-y-6">
-                    <div>
+                    <!-- Gemini API -->
+                    <div class="api-section" data-api="gemini" style="display: none;">
                         <label for="geminiApiKey" class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             <i data-lucide="key-round" class="w-4 h-4 mr-2"></i>
                             API-ключ Google Gemini
@@ -489,7 +500,9 @@
                             <label for="defaultGemini" class="ml-2 text-sm text-gray-600 dark:text-gray-400">Использовать по умолчанию</label>
                         </div>
                     </div>
-                    <div>
+
+                    <!-- DeepSeek API -->
+                    <div class="api-section" data-api="deepseek" style="display: none;">
                         <label for="deepseekApiKey" class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             <i data-lucide="key-round" class="w-4 h-4 mr-2"></i>
                             API-ключ DeepSeek
@@ -500,7 +513,9 @@
                             <label for="defaultDeepseek" class="ml-2 text-sm text-gray-600 dark:text-gray-400">Использовать по умолчанию</label>
                         </div>
                     </div>
-                    <div>
+
+                    <!-- ChatGPT API -->
+                    <div class="api-section" data-api="chatgpt" style="display: none;">
                         <label for="chatgptApiKey" class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             <i data-lucide="key-round" class="w-4 h-4 mr-2"></i>
                             API-ключ ChatGPT
@@ -511,7 +526,9 @@
                             <label for="defaultChatgpt" class="ml-2 text-sm text-gray-600 dark:text-gray-400">Использовать по умолчанию</label>
                         </div>
                     </div>
-                    <div>
+
+                    <!-- OpenRouter API -->
+                    <div class="api-section" data-api="openrouter" style="display: none;">
                         <label for="openrouterApiKey" class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             <i data-lucide="key-round" class="w-4 h-4 mr-2"></i>
                             API-ключ OpenRouter
@@ -520,6 +537,8 @@
                         <div class="mt-2">
                             <label for="openrouterModelSelect" class="block text-sm text-gray-600 dark:text-gray-400 mb-1">Выберите модель:</label>
                             <select id="openrouterModelSelect" class="w-full p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-gray-50">
+                                <option value="deepseek/deepseek-chat-v3-0324:free">DeepSeek V3 0324 (free)</option>
+                                <option value="google/gemma-3-27b-it:free">Google: Gemma 3 27B (free)</option>
                                 <option value="deepseek/deepseek-r1-0528-qwen3-8b:free">deepseek/deepseek-r1-0528-qwen3-8b:free</option>
                                 <option value="mistralai/mistral-7b-instruct:free">mistralai/mistral-7b-instruct:free</option>
                                 <option value="google/gemma-7b-it:free">google/gemma-7b-it:free</option>
@@ -532,7 +551,9 @@
                             <label for="defaultOpenrouter" class="ml-2 text-sm text-gray-600 dark:text-gray-400">Использовать по умолчанию</label>
                         </div>
                     </div>
-                    <div>
+
+                    <!-- LM Studio -->
+                    <div class="api-section" data-api="local" style="display: none;">
                         <label for="lmStudioUrl" class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             <i data-lucide="server" class="w-4 h-4 mr-2"></i>
                             Локальная модель (LM Studio)
@@ -549,6 +570,7 @@
                             <label for="defaultLocal" class="ml-2 text-sm text-gray-600 dark:text-gray-400">Использовать по умолчанию</label>
                         </div>
                     </div>
+
                     <div class="flex space-x-3 pt-4">
                         <button type="submit" id="saveAiSettingsBtn" class="flex-1 bg-purple-500 text-white py-2 rounded-lg hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700 transition-colors">Сохранить</button>
                         <button type="button" id="cancelAiSettingsBtn" class="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 dark:bg-slate-600 dark:text-gray-200 dark:hover:bg-slate-500 transition-colors">Отмена</button>

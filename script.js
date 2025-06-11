@@ -2045,13 +2045,45 @@ const lmStudioUrlInput = document.getElementById('lmStudioUrl');
 
 // Функция открытия модального окна
 function openAiSettingsModal() {
-    // Загружаем сохраненные значения
-    geminiApiKeyInput.value = localStorage.getItem(GEMINI_API_KEY) || '';
-    lmStudioUrlInput.value = localStorage.getItem(LM_STUDIO_URL) || '';
+    const modal = document.getElementById('aiSettingsModal');
+    modal.classList.add('show');
     
-    // Открываем окно
-    openModal(aiSettingsModalEl);
-    lucide.createIcons(); // Обновляем иконки внутри модального окна
+    // Загружаем настройки
+    loadAiSettings();
+    
+    // Добавляем обработчики для кнопок выбора API
+    const apiButtons = document.querySelectorAll('.api-selector-btn');
+    apiButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            // Убираем активный класс у всех кнопок
+            apiButtons.forEach(btn => btn.classList.remove('active'));
+            // Добавляем активный класс нажатой кнопке
+            button.classList.add('active');
+            
+            // Скрываем все секции API
+            document.querySelectorAll('.api-section').forEach(section => {
+                section.style.display = 'none';
+            });
+            
+            // Показываем выбранную секцию
+            const selectedApi = button.dataset.api;
+            const selectedSection = document.querySelector(`.api-section[data-api="${selectedApi}"]`);
+            if (selectedSection) {
+                selectedSection.style.display = 'block';
+            }
+        });
+    });
+    
+    // Показываем первую секцию по умолчанию
+    const firstButton = apiButtons[0];
+    if (firstButton) {
+        firstButton.classList.add('active');
+        const firstApi = firstButton.dataset.api;
+        const firstSection = document.querySelector(`.api-section[data-api="${firstApi}"]`);
+        if (firstSection) {
+            firstSection.style.display = 'block';
+        }
+    }
 }
 
 // Функция сохранения настроек
@@ -2172,28 +2204,39 @@ async function saveAiSettings(event) {
 }
 
 function loadAiSettings() {
+    // Загружаем API ключи
     const geminiApiKey = localStorage.getItem('diaryApp_geminiApiKey') || '';
     const deepseekApiKey = localStorage.getItem('diaryApp_deepseekApiKey') || '';
     const chatgptApiKey = localStorage.getItem('diaryApp_chatgptApiKey') || '';
     const openrouterApiKey = localStorage.getItem('diaryApp_openrouterApiKey') || '';
-    const openrouterModel = localStorage.getItem('diaryApp_openrouterModel') || 'deepseek/deepseek-r1-0528-qwen3-8b:free';
     const lmStudioUrl = localStorage.getItem('diaryApp_lmStudioUrl') || '';
-    const defaultModel = localStorage.getItem('diaryApp_defaultAiModel') || 'gemini';
     
+    // Загружаем выбранные модели
+    const openrouterModel = localStorage.getItem('diaryApp_openrouterModel') || 'deepseek/deepseek-r1-0528-qwen3-8b:free';
+    const localModel = localStorage.getItem('diaryApp_selectedLocalModel') || '';
+    
+    // Загружаем модель по умолчанию
+    const defaultModel = localStorage.getItem('diaryApp_defaultAiModel') || '';
+    
+    // Устанавливаем значения в форму
     document.getElementById('geminiApiKey').value = geminiApiKey;
     document.getElementById('deepseekApiKey').value = deepseekApiKey;
     document.getElementById('chatgptApiKey').value = chatgptApiKey;
     document.getElementById('openrouterApiKey').value = openrouterApiKey;
-    document.getElementById('openrouterModelSelect').value = openrouterModel;
     document.getElementById('lmStudioUrl').value = lmStudioUrl;
     
-    // Устанавливаем выбранную модель по умолчанию
-    const defaultModelRadio = document.getElementById(`default${defaultModel.charAt(0).toUpperCase() + defaultModel.slice(1)}`);
-    if (defaultModelRadio) {
-        defaultModelRadio.checked = true;
+    document.getElementById('openrouterModelSelect').value = openrouterModel;
+    document.getElementById('localModelSelect').value = localModel;
+    
+    // Устанавливаем модель по умолчанию
+    if (defaultModel) {
+        const radioButton = document.getElementById(`default${defaultModel.charAt(0).toUpperCase() + defaultModel.slice(1)}`);
+        if (radioButton) {
+            radioButton.checked = true;
+        }
     }
-
-    // Загружаем список моделей, если URL указан
+    
+    // Если есть URL LM Studio, обновляем список моделей
     if (lmStudioUrl) {
         updateLocalModelsList(lmStudioUrl);
     }
@@ -2214,10 +2257,10 @@ document.getElementById('localModelSelect').addEventListener('change', function(
 
 // Обновляем функцию запроса прогноза от ИИ
 async function requestAiPrediction() {
-    const deepseekApiKey = localStorage.getItem('deepseekApiKey');
-    const geminiApiKey = localStorage.getItem('geminiApiKey');
-    const lmStudioUrl = localStorage.getItem('lmStudioUrl');
-    const defaultModel = localStorage.getItem('defaultAiModel') || 'gemini';
+    const deepseekApiKey = localStorage.getItem('diaryApp_deepseekApiKey');
+    const geminiApiKey = localStorage.getItem('diaryApp_geminiApiKey');
+    const lmStudioUrl = localStorage.getItem('diaryApp_lmStudioUrl');
+    const defaultModel = localStorage.getItem('diaryApp_defaultAiModel') || 'gemini';
 
     if (!deepseekApiKey && !geminiApiKey && !lmStudioUrl) {
         showAlertPopup('Пожалуйста, настройте хотя бы один источник ИИ в настройках', 'warning');
@@ -2317,3 +2360,26 @@ async function getDeepseekPrediction(prompt) {
         throw error;
     }
 }
+
+// Инициализация обработчиков событий при загрузке страницы
+document.addEventListener('DOMContentLoaded', () => {
+    // Инициализация кнопок выбора API
+    const apiButtons = document.querySelectorAll('.api-selector-btn');
+    apiButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            // Убираем активный класс у всех кнопок
+            apiButtons.forEach(btn => btn.classList.remove('active'));
+            // Добавляем активный класс нажатой кнопке
+            button.classList.add('active');
+            
+            // Скрываем все секции API
+            document.querySelectorAll('.api-section').forEach(section => {
+                section.style.display = 'none';
+            });
+            
+            // Показываем выбранную секцию
+            const selectedApi = button.dataset.api;
+            document.querySelector(`.api-section[data-api="${selectedApi}"]`).style.display = 'block';
+        });
+    });
+});
