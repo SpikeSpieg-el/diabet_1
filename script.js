@@ -1,6 +1,7 @@
 const CR_KEY = 'diabetesCalcAdvPop_carbRatio'; 
 const SF_KEY = 'diabetesCalcAdvPop_sensitivityFactor';
 const TS_KEY = 'diabetesCalcAdvPop_targetSugar';
+const INSULIN_ACTION_DURATION_HOURS = 4; // Standard duration for fast-acting insulin
 
 const popupData = {
     settingsInfo: {
@@ -314,6 +315,7 @@ const productsTableBodyEl = document.getElementById('productsTableBody');
 const addProductModalEl = document.getElementById('addProductModal');
 const addMealModalEl = document.getElementById('addMealModal');
 const addGlucoseModalEl = document.getElementById('addGlucoseModal');
+const aiSettingsModalEl = document.getElementById('aiSettingsModal'); // New AI Settings Modal
 
 // Theme Toggle
 const darkModeToggleBtn = document.getElementById('darkModeToggle');
@@ -321,7 +323,7 @@ const darkModeToggleBtn = document.getElementById('darkModeToggle');
 // --- DOM Elements for Prediction (New) ---
 const predictedSugarSectionEl = document.getElementById('predictedSugarSection');
 const predictedSugarDisplayEl = document.getElementById('predictedSugarDisplay');
-const predictionContextEl = document.getElementById('predictionContext');
+const predictionContextEl = document.getElementById('predictionContextEl'); // Corrected ID
 const correctPredictionBtnEl = document.getElementById('correctPredictionBtn');
 
 
@@ -434,9 +436,9 @@ function calculateMealStats(mealProducts) {
     });
 
     return {
-        carbs: totalCarbs.toFixed(1),
-        breadUnits: (totalCarbs / 12).toFixed(1),
-        insulin: totalInsulin.toFixed(1)
+        carbs: parseFloat(totalCarbs.toFixed(1)),
+        breadUnits: parseFloat((totalCarbs / 12).toFixed(1)), // Also ensuring breadUnits is numeric for consistency
+        insulin: parseFloat(totalInsulin.toFixed(1))
     };
 }
 
@@ -515,10 +517,72 @@ function findSugarBeforeMeal(dateStr, mealTimeStr) { // dateStr is local YYYY-MM
         const diffMinutes = (mealDateTime - glucoseDateTime) / (1000 * 60);
 
         if (diffMinutes <= 90 && diffMinutes >= 0) { 
-            return latestGlucoseBeforeMeal.glucose;
+            return { glucose: latestGlucoseBeforeMeal.glucose, time: latestGlucoseBeforeMeal.time };
         }
     }
     return null;
+}
+
+function calculateIOB(insulinEvents, currentTime, insulinActionDurationHours, selectedDate) {
+    let totalIOB = 0;
+    if (!Array.isArray(insulinEvents)) {
+        console.error("calculateIOB: insulinEvents is not an array.");
+        return 0;
+    }
+
+    for (const event of insulinEvents) {
+        if (typeof event.time !== 'string' || typeof event.dose !== 'number' || isNaN(event.dose)) {
+            console.error("calculateIOB: Invalid event structure", event);
+            continue;
+        }
+        const doseDateTime = new Date(selectedDate + 'T' + event.time);
+        if (isNaN(doseDateTime.getTime())) {
+            console.error("calculateIOB: Invalid date constructed for event", event, selectedDate);
+            continue;
+        }
+
+        const hoursAgo = (currentTime.getTime() - doseDateTime.getTime()) / (1000 * 60 * 60);
+
+        // If hoursAgo is negative, the dose is in the future, so we ignore it.
+        if (hoursAgo >= 0 && hoursAgo < insulinActionDurationHours) {
+            const remainingFraction = 1 - (hoursAgo / insulinActionDurationHours);
+            totalIOB += event.dose * remainingFraction;
+        }
+    }
+    return Math.max(0, parseFloat(totalIOB.toFixed(2))); // Return IOB rounded to 2 decimal places
+}
+
+function calculateAdvancedPrediction(baselineGlucose, recentCarbEvents, iob, coeffs, selectedDate, currentTime) {
+    let predictedSugar = baselineGlucose;
+    const { carbRatio, sensitivityFactor } = coeffs;
+
+    if (carbRatio == null || sensitivityFactor == null || isNaN(carbRatio) || isNaN(sensitivityFactor) || carbRatio === 0 || sensitivityFactor === 0) {
+        console.error("calculateAdvancedPrediction: Invalid coefficients", coeffs);
+        return null; // Or baselineGlucose, depending on desired behavior for error
+    }
+
+    // Subtract IOB effect
+    predictedSugar -= iob * sensitivityFactor;
+
+    // Add Carb Effects
+    if (Array.isArray(recentCarbEvents)) {
+        for (const event of recentCarbEvents) {
+            const carbs = event.carbs;
+            // const carbTime = new Date(selectedDate + 'T' + event.time); // Not used in this simple model iteration
+            
+            // For this iteration, we'll use a simple model: add the full potential rise.
+            // We'll assume a default carbAbsorptionFactor of 1.0.
+            const carbAbsorptionFactor = 1.0; 
+            const sugarIncreaseFromCarbs = ((carbs * carbAbsorptionFactor) / 10) * carbRatio * sensitivityFactor;
+            predictedSugar += sugarIncreaseFromCarbs;
+        }
+    }
+
+    // Apply Bounds
+    if (predictedSugar < 0.5) predictedSugar = 0.5;
+    if (predictedSugar > 40.0) predictedSugar = 40.0;
+
+    return parseFloat(predictedSugar.toFixed(1));
 }
 
 function isPredictionSuperseded(dateStr, mealTimeStr) { // dateStr is local YYYY-MM-DD
@@ -543,72 +607,190 @@ function isPredictionSuperseded(dateStr, mealTimeStr) { // dateStr is local YYYY
 }
 
 function renderPredictedCurrentSugar() {
-    if (!predictedSugarSectionEl || !predictedSugarDisplayEl || !predictionContextEl) {
-        console.error("Prediction UI elements not found.");
+    const PREDICTION_CARB_LOOKBACK_HOURS = 4;
+    const PREDICTION_INSULIN_LOOKBACK_HOURS = 4;
+    const PREDICTION_RECENT_GLUCOSE_MINUTES = 30; // For using a live BG as baseline
+
+    // Main UI elements
+    if (!predictedSugarSectionEl || !predictedSugarDisplayEl || !predictionContextEl) { // predictionContextEl is the main div
+        console.error("Main prediction UI elements (section, display, or context div) not found.");
         return;
     }
 
-    predictedSugarSectionEl.style.display = 'none'; 
+    // New specific context span elements
+    const pc_status = document.getElementById('pc_status');
+    const pc_baseline = document.getElementById('pc_baseline');
+    const pc_carbs = document.getElementById('pc_carbs');
+    const pc_insulin = document.getElementById('pc_insulin');
+    const pc_iob_element = document.getElementById('pc_iob');
 
-    const todayLocalStr = getLocalDateYYYYMMDD(new Date());
-    if (selectedDate !== todayLocalStr) { // Compare with local 'today'
-        return; 
+    if (!pc_status || !pc_baseline || !pc_carbs || !pc_insulin || !pc_iob_element) {
+        console.error("One or more new prediction context elements (pc_*) not found.");
+        predictedSugarSectionEl.style.display = 'none'; // Hide section if critical parts are missing
+        return;
     }
 
-    const dayMealsData = getDayMeals(selectedDate).sort((a, b) => b.time.localeCompare(a.time)); 
-    if (dayMealsData.length === 0) {
-        return; 
-    }
-    const latestMeal = dayMealsData[0];
+    // Clear previous context and hide section initially
+    predictedSugarSectionEl.style.display = 'none';
+    pc_status.innerHTML = ''; // Use innerHTML for consistency if it ever gets HTML
+    pc_baseline.innerHTML = '';
+    pc_carbs.innerHTML = '';
+    pc_insulin.innerHTML = '';
+    pc_iob_element.innerHTML = '';
+    predictedSugarDisplayEl.innerHTML = '---'; // Use innerHTML for consistency
 
-    const mealDateTime = new Date(`${selectedDate}T${latestMeal.time}`); // selectedDate is local YYYY-MM-DD
+    let baselineGlucose = null;
+    let baselineGlucoseTime = null;
+    // predictionStatusMessage variable is removed.
+
     const currentTime = new Date();
-    const hoursSinceMeal = (currentTime - mealDateTime) / (1000 * 60 * 60);
+    const todayLocalStr = getLocalDateYYYYMMDD(new Date());
+    const isToday = (selectedDate === todayLocalStr);
 
-    if (hoursSinceMeal < 0 || hoursSinceMeal > 4) { 
-        return;
+    // Fetch Recent Actual Glucose (as potential baseline)
+    const dayGlucoseData = getDayGlucose(selectedDate).sort((a, b) => b.time.localeCompare(a.time)); 
+
+    if (dayGlucoseData.length > 0 && isToday) {
+        const latestGlucoseRecord = dayGlucoseData[0];
+        const glucoseDateTime = new Date(selectedDate + 'T' + latestGlucoseRecord.time);
+        const minutesSinceLatestGlucose = (currentTime - glucoseDateTime) / (1000 * 60);
+
+        if (minutesSinceLatestGlucose >= 0 && minutesSinceLatestGlucose <= PREDICTION_RECENT_GLUCOSE_MINUTES) {
+            baselineGlucose = latestGlucoseRecord.glucose;
+            baselineGlucoseTime = latestGlucoseRecord.time;
+            pc_baseline.innerHTML = `<strong>Недавний СК:</strong> ${baselineGlucose} ммоль/л (${baselineGlucoseTime}).`;
+        }
     }
-    
-    if (isPredictionSuperseded(selectedDate, latestMeal.time)) {
-        return; 
-    }
 
-    const sugarBeforeMeal = findSugarBeforeMeal(selectedDate, latestMeal.time);
-    if (sugarBeforeMeal === null) {
-        predictionContextEl.textContent = `Для прогноза нужно измерение сахара не более чем за 1.5ч до еды (${latestMeal.time}).`;
-        predictedSugarDisplayEl.textContent = '---';
-        predictedSugarSectionEl.style.display = 'block';
-        lucide.createIcons();
-        return;
-    }
+    // Fetch Recent Carbohydrate Events
+    let recentCarbEvents = [];
+    const allDayMeals = getDayMeals(selectedDate); 
 
-    const mealStats = calculateMealStats(latestMeal.products);
-    const totalCarbs = parseFloat(mealStats.carbs);
-    const actualInsulin = latestMeal.actualInsulin || 0; 
+    allDayMeals.forEach(meal => {
+        const mealDateTime = new Date(selectedDate + 'T' + meal.time);
+        const hoursSinceMeal = (currentTime - mealDateTime) / (1000 * 60 * 60);
 
-    const carbRatio = parseFloat(localStorage.getItem(CR_KEY));
-    const sensitivityFactor = parseFloat(localStorage.getItem(SF_KEY));
+        if (hoursSinceMeal >= 0 && hoursSinceMeal <= PREDICTION_CARB_LOOKBACK_HOURS) {
+            const mealStats = calculateMealStats(meal.products); 
+            if (mealStats.carbs > 0) {
+                recentCarbEvents.push({ time: meal.time, carbs: mealStats.carbs, notes: meal.notes || '' });
+            }
+        }
+    });
 
-    if (isNaN(carbRatio) || isNaN(sensitivityFactor)) {
-        predictionContextEl.textContent = "Коэффициенты УК и ФЧИ не настроены в Калькуляторе.";
-        predictedSugarDisplayEl.textContent = '---';
-        predictedSugarSectionEl.style.display = 'block';
-        lucide.createIcons();
-        return;
-    }
-    
-    const predictedSugar = calculateSugarPredictionLogic(sugarBeforeMeal, totalCarbs, actualInsulin, carbRatio, sensitivityFactor);
-
-    if (predictedSugar !== null) {
-        predictedSugarDisplayEl.innerHTML = `<span class="${getGlucoseColor(predictedSugar)}">${predictedSugar.toFixed(1)} ммоль/л</span> <span class="text-base font-normal text-gray-500 dark:text-gray-400">(прогноз)</span>`;
-        const predictionValidUntil = new Date(mealDateTime.getTime() + 3 * 60 * 60 * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        predictionContextEl.textContent = `На основе: ${latestMeal.time} (до: ${sugarBeforeMeal} ммоль/л, ${totalCarbs.toFixed(0)}г У, ${actualInsulin.toFixed(1)} ед И). Актуально до ~${predictionValidUntil}.`;
-        predictedSugarSectionEl.style.display = 'block';
+    if (recentCarbEvents.length > 0) {
+        recentCarbEvents.sort((a, b) => a.time.localeCompare(b.time)); // Oldest first
+        pc_carbs.innerHTML = `<strong>Еда:</strong> ${recentCarbEvents.map(e => e.carbs + 'г в ' + e.time).join(' • ')}.`;
     } else {
-        predictionContextEl.textContent = "Недостаточно данных для прогноза.";
-        predictedSugarDisplayEl.textContent = '---';
-        predictedSugarSectionEl.style.display = 'block';
+        pc_carbs.innerHTML = ''; // Or "<strong>Еда:</strong> нет недавних записей"
     }
+
+    // Fetch Recent Insulin Events
+    let recentInsulinEvents = [];
+    allDayMeals.forEach(meal => {
+        if (meal.actualInsulin && meal.actualInsulin > 0) {
+            const insulinDateTime = new Date(selectedDate + 'T' + meal.time);
+            const hoursSinceInsulin = (currentTime - insulinDateTime) / (1000 * 60 * 60);
+
+            if (hoursSinceInsulin >= 0 && hoursSinceInsulin <= PREDICTION_INSULIN_LOOKBACK_HOURS) {
+                recentInsulinEvents.push({ time: meal.time, dose: meal.actualInsulin });
+            }
+        }
+    });
+    
+    if (recentInsulinEvents.length > 0) {
+        recentInsulinEvents.sort((a, b) => a.time.localeCompare(b.time)); // Oldest first
+        pc_insulin.innerHTML = `<strong>Инсулин:</strong> ${recentInsulinEvents.map(e => e.dose + 'ед в ' + e.time).join(' • ')}.`;
+    } else {
+        pc_insulin.innerHTML = ''; // Or "<strong>Инсулин:</strong> нет недавних записей"
+    }
+
+    // Refine Baseline Glucose (if not found from recent actual)
+    if (baselineGlucose === null) {
+        let earliestActivityTime = null;
+        if (recentCarbEvents.length > 0) {
+            earliestActivityTime = recentCarbEvents[0].time; 
+        }
+        if (recentInsulinEvents.length > 0) {
+            if (earliestActivityTime === null || recentInsulinEvents[0].time < earliestActivityTime) {
+                earliestActivityTime = recentInsulinEvents[0].time; 
+            }
+        }
+
+        if (earliestActivityTime) {
+            const bgInfo = findSugarBeforeMeal(selectedDate, earliestActivityTime); 
+            if (bgInfo !== null) {
+                baselineGlucose = bgInfo.glucose;
+                baselineGlucoseTime = bgInfo.time;
+                pc_baseline.innerHTML = `<strong>СК перед (${earliestActivityTime}):</strong> ${baselineGlucose} ммоль/л (${baselineGlucoseTime}).`;
+            }
+        }
+    }
+    
+    // Handle Exit Conditions
+    if (baselineGlucose === null) {
+        pc_status.textContent = "Недостаточно данных о глюкозе для прогноза.";
+        predictedSugarSectionEl.style.display = 'block';
+        lucide.createIcons();
+        return;
+    }
+
+    if (recentCarbEvents.length === 0 && recentInsulinEvents.length === 0 && isToday) {
+        pc_status.textContent = "Нет недавних данных о еде/инсулине для нового прогноза.";
+        // pc_baseline might already be populated if there was a recent BG
+        predictedSugarSectionEl.style.display = 'block';
+        lucide.createIcons();
+        return;
+    }
+    
+    const iob = calculateIOB(recentInsulinEvents, currentTime, INSULIN_ACTION_DURATION_HOURS, selectedDate);
+    console.log("Baseline Glucose:", baselineGlucose, "at", baselineGlucoseTime, "Recent Carb Events:", recentCarbEvents, "Recent Insulin Events:", recentInsulinEvents, "Calculated IOB:", iob);
+
+    if (iob > 0) {
+        pc_iob_element.innerHTML = `<strong>Активный инсулин (IOB):</strong> ${iob.toFixed(1)} ед.`;
+    } else {
+        pc_iob_element.innerHTML = ''; // Or "<strong>Активный инсулин (IOB):</strong> 0 ед."
+    }
+
+    // Get Coefficients
+    const carbRatioStr = localStorage.getItem(CR_KEY);
+    const sensitivityFactorStr = localStorage.getItem(SF_KEY);
+    const targetSugarStr = localStorage.getItem(TS_KEY); 
+
+    if (!carbRatioStr || !sensitivityFactorStr) {
+        pc_status.textContent = "Коэффициенты УК/ФЧИ не настроены.";
+        predictedSugarSectionEl.style.display = 'block';
+        lucide.createIcons();
+        return;
+    }
+
+    const coeffs = {
+        carbRatio: parseFloat(carbRatioStr),
+        sensitivityFactor: parseFloat(sensitivityFactorStr),
+        targetSugar: parseFloat(targetSugarStr) 
+    };
+
+    if (isNaN(coeffs.carbRatio) || isNaN(coeffs.sensitivityFactor) || coeffs.carbRatio === 0 || coeffs.sensitivityFactor === 0) {
+        pc_status.textContent = "Ошибка в сохраненных коэффициентах УК/ФЧИ.";
+        predictedSugarSectionEl.style.display = 'block';
+        lucide.createIcons();
+        return;
+    }
+
+    // Calculate Advanced Prediction
+    const finalPredictedSugar = calculateAdvancedPrediction(baselineGlucose, recentCarbEvents, iob, coeffs, selectedDate, currentTime);
+
+    if (finalPredictedSugar !== null) {
+        predictedSugarDisplayEl.innerHTML = `<span class="${getGlucoseColor(finalPredictedSugar)}">${finalPredictedSugar.toFixed(1)} ммоль/л</span> <span class="text-base font-normal text-gray-500 dark:text-gray-400">(прогноз)</span>`;
+        // pc_status remains empty if prediction is successful, or could hold a general "Прогноз рассчитан"
+    } else {
+        // Error during calculateAdvancedPrediction (e.g. bad coeffs already handled by its return null)
+        // This specific message might be redundant if calculateAdvancedPrediction handles its own errors well,
+        // but kept for robustness.
+        pc_status.textContent = "Не удалось рассчитать прогноз из-за ошибки в коэффициентах.";
+    }
+    
+    predictedSugarSectionEl.style.display = 'block';
     lucide.createIcons();
 }
 
@@ -1845,5 +2027,112 @@ function showConfirmPopup(message, callback) {
     confirmPopup.querySelector('#confirmNo').addEventListener('click', () => {
         callback(false);
         removePopup();
+    });
+}
+
+// --- НОВЫЙ КОД ДЛЯ НАСТРОЕК ИИ-ПОМОЩНИКА ---
+
+// Константы для ключей в localStorage
+const GEMINI_API_KEY = 'diaryApp_geminiApiKey';
+const LM_STUDIO_URL = 'diaryApp_lmStudioUrl';
+
+// Получение элементов DOM
+const showAiSettingsModalBtn = document.getElementById('showAiSettingsModalBtn');
+const cancelAiSettingsBtn = document.getElementById('cancelAiSettingsBtn');
+const aiSettingsForm = document.getElementById('aiSettingsForm');
+const geminiApiKeyInput = document.getElementById('geminiApiKey');
+const lmStudioUrlInput = document.getElementById('lmStudioUrl');
+
+// Функция открытия модального окна
+function openAiSettingsModal() {
+    // Загружаем сохраненные значения
+    geminiApiKeyInput.value = localStorage.getItem(GEMINI_API_KEY) || '';
+    lmStudioUrlInput.value = localStorage.getItem(LM_STUDIO_URL) || '';
+    
+    // Открываем окно
+    openModal(aiSettingsModalEl);
+    lucide.createIcons(); // Обновляем иконки внутри модального окна
+}
+
+// Функция сохранения настроек
+function saveAiSettings(event) {
+    event.preventDefault(); // Предотвращаем стандартную отправку формы
+
+    const geminiKey = geminiApiKeyInput.value.trim();
+    const lmStudioUrl = lmStudioUrlInput.value.trim();
+
+    // Сохраняем в localStorage
+    localStorage.setItem(GEMINI_API_KEY, geminiKey);
+    localStorage.setItem(LM_STUDIO_URL, lmStudioUrl);
+
+    // Закрываем окно и показываем уведомление
+    closeModal(aiSettingsModalEl);
+    showAlertPopup('Настройки ИИ-помощника сохранены!', 'success');
+}
+
+// Навешиваем обработчики событий
+if (showAiSettingsModalBtn) {
+    showAiSettingsModalBtn.addEventListener('click', openAiSettingsModal);
+}
+
+if (cancelAiSettingsBtn) {
+    cancelAiSettingsBtn.addEventListener('click', () => closeModal(aiSettingsModalEl));
+}
+
+if (aiSettingsForm) {
+    aiSettingsForm.addEventListener('submit', saveAiSettings);
+}
+if (requestAiPredictionBtn) {
+    requestAiPredictionBtn.addEventListener('click', async () => {
+        // 1. Показываем состояние загрузки
+        aiPredictionResultText.style.display = 'block';
+        aiPredictionResultText.innerHTML = `
+            <div class="flex items-center justify-center">
+                <i data-lucide="loader-2" class="w-5 h-5 mr-2 animate-spin"></i>
+                <span>Анализирую данные и связываюсь с ИИ...</span>
+            </div>
+        `;
+        lucide.createIcons();
+
+        // 2. Собираем все необходимые данные для промпта
+        const coeffs = {
+            carbRatio: localStorage.getItem(CR_KEY),
+            sensitivityFactor: localStorage.getItem(SF_KEY),
+            targetSugar: localStorage.getItem(TS_KEY)
+        };
+        
+        if (!coeffs.carbRatio || !coeffs.sensitivityFactor) {
+            aiPredictionResultText.innerHTML = `Пожалуйста, сначала установите ваши индивидуальные коэффициенты в калькуляторе.`;
+            return;
+        }
+
+        const dataForPrompt = {
+            selectedDate,
+            meals: getDayMeals(selectedDate),
+            glucoseRecords: getDayGlucose(selectedDate),
+            coeffs: {
+                carbRatio: parseFloat(coeffs.carbRatio),
+                sensitivityFactor: parseFloat(coeffs.sensitivityFactor),
+                targetSugar: parseFloat(coeffs.targetSugar)
+            }
+        };
+
+        // 3. Вызываем функцию из ai_predictor.js
+        const result = await getAIPrediction(dataForPrompt);
+
+        // 4. Отображаем результат
+        if (result.success) {
+            const { predicted_sugar, explanation, recommendation } = result.data;
+            aiPredictionResultText.innerHTML = `
+                <div class="mb-2">
+                    <span class="font-bold text-lg ${getGlucoseColor(predicted_sugar)}">${predicted_sugar.toFixed(1)} ммоль/л</span>
+                    <span class="text-gray-500 dark:text-gray-400">(прогноз ИИ)</span>
+                </div>
+                <p class="mb-2"><strong>Обоснование:</strong> ${explanation}</p>
+                <p><strong>Рекомендация:</strong> ${recommendation}</p>
+            `;
+        } else {
+            aiPredictionResultText.innerHTML = `<span class="text-red-500"><strong>Ошибка:</strong> ${result.error}</span>`;
+        }
     });
 }

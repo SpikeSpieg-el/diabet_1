@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Дневник диабетика</title>
@@ -19,9 +18,14 @@
                     <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2">Дневник</h1>
                     <p class="text-gray-600 dark:text-gray-300">Управление питанием, контроль глюкозы и расчет дозы инсулина</p>
                 </div>
-                <button id="darkModeToggle" title="Переключить тему" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
-                    {/* Icon will be set by JavaScript */}
-                </button>
+                <div class="flex items-center space-x-2">
+                    <button id="showAiSettingsModalBtn" title="Настройки ИИ-помощника" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
+                        <i data-lucide="brain-circuit" class="w-6 h-6 text-purple-500 dark:text-purple-400"></i>
+                    </button>
+                    <button id="darkModeToggle" title="Переключить тему" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
+                        {/* Icon will be set by JavaScript */}
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -90,22 +94,45 @@
                 <input type="file" id="importFile" accept=".json" style="display: none;">
             </div>
 
-            <!-- Right panel for selected day's details (takes 2/3 width on XL, stacking content vertically) -->
+            <!-- Правая колонка -->
             <div class="xl:col-span-2 space-y-6"> 
-                <!-- Predicted Sugar Section (New) -->
+                <!-- Predicted Sugar Section (ОБНОВЛЕНО) -->
                 <div id="predictedSugarSection" class="bg-white rounded-xl shadow-lg p-6 dark:bg-slate-800" style="display: none;">
                     <div class="flex justify-between items-center mb-3">
-                        <h2 class="text-xl font-semibold dark:text-gray-100">Прогноз текущего сахара</h2>
+                        <h2 class="text-xl font-semibold dark:text-gray-100">Прогноз сахара</h2>
                         <button id="correctPredictionBtn" class="bg-green-500 text-white px-3 py-1.5 rounded-lg hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 transition-colors flex items-center text-sm">
                             <i data-lucide="edit-3" class="w-4 h-4 mr-1.5"></i> Внести измерение
                         </button>
                     </div>
+                    
+                    <!-- Локальный прогноз -->
+                    <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Локальный расчет (мгновенно)</h3>
                     <div id="predictedSugarDisplay" class="text-3xl font-bold mb-1">
                         {/* Prediction will be shown here */}
                     </div>
-                    <p id="predictionContext" class="text-xs text-gray-500 dark:text-gray-400"></p>
-                </div>
+                    <div id="predictionContextEl" class="text-xs text-gray-500 dark:text-gray-400 space-y-1 mb-4">
+                        <span id="pc_status" class="block error-message"></span>
+                        <span id="pc_baseline" class="block"></span>
+                        <span id="pc_carbs" class="block"></span>
+                        <span id="pc_insulin" class="block"></span>
+                        <span id="pc_iob" class="block"></span>
+                    </div>
 
+                    <hr class="dark:border-slate-700 my-4">
+
+                    <!-- Прогноз от ИИ (НОВЫЙ БЛОК) -->
+                    <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Прогноз от ИИ-помощника (на 2 часа)</h3>
+                    <div id="aiPredictionResultContainer" class="space-y-3">
+                        <button id="requestAiPredictionBtn" class="w-full bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700 transition-colors flex items-center justify-center">
+                            <i data-lucide="brain-circuit" class="w-5 h-5 mr-2"></i> Запросить прогноз у ИИ
+                        </button>
+                        <div id="aiPredictionResultText" class="p-3 bg-purple-50 rounded-lg dark:bg-slate-700 dark:text-gray-300 text-sm" style="display: none;">
+                            <!-- Результат от ИИ будет здесь -->
+                        </div>
+                        <p class="text-xs text-gray-400 text-center">Прогноз от ИИ является оценочным и не заменяет измерение глюкометром.</p>
+                    </div>
+                </div>
+                
                 
 
                 <!-- Приемы пищи за день -->
@@ -446,7 +473,35 @@
             </div>
         </div>
 
+        <!-- Модальное окно настроек ИИ-помощника (НОВОЕ) -->
+        <div id="aiSettingsModal" class="modal fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 items-center justify-center p-4 z-50">
+            <div class="bg-white rounded-xl p-6 w-full max-w-md dark:bg-slate-800">
+                <h3 class="text-lg font-semibold mb-6 dark:text-gray-100">Настройки ИИ-помощника</h3>
+                <form id="aiSettingsForm" class="space-y-6">
+                    <div>
+                        <label for="geminiApiKey" class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            <i data-lucide="key-round" class="w-4 h-4 mr-2"></i>
+                            API-ключ Google Gemini
+                        </label>
+                        <input type="password" id="geminiApiKey" placeholder="Введите ваш API-ключ" class="w-full p-3 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-gray-50 dark:placeholder-gray-400">
+                    </div>
+                    <div>
+                        <label for="lmStudioUrl" class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            <i data-lucide="server" class="w-4 h-4 mr-2"></i>
+                            Локальная модель (LM Studio)
+                        </label>
+                        <input type="text" id="lmStudioUrl" placeholder="http://localhost:1234/v1" class="w-full p-3 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-gray-50 dark:placeholder-gray-400">
+                    </div>
+                    <div class="flex space-x-3 pt-4">
+                        <button type="submit" id="saveAiSettingsBtn" class="flex-1 bg-purple-500 text-white py-2 rounded-lg hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700 transition-colors">Сохранить</button>
+                        <button type="button" id="cancelAiSettingsBtn" class="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 dark:bg-slate-600 dark:text-gray-200 dark:hover:bg-slate-500 transition-colors">Отмена</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
     </div>
+    <script src="ai_predictor.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
