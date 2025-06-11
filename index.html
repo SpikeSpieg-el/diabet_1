@@ -571,9 +571,15 @@
                         </div>
                     </div>
 
-                    <div class="flex space-x-3 pt-4">
-                        <button type="submit" id="saveAiSettingsBtn" class="flex-1 bg-purple-500 text-white py-2 rounded-lg hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700 transition-colors">Сохранить</button>
-                        <button type="button" id="cancelAiSettingsBtn" class="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 dark:bg-slate-600 dark:text-gray-200 dark:hover:bg-slate-500 transition-colors">Отмена</button>
+                    <div class="flex flex-col sm:flex-row gap-3 pt-4">
+                        <button type="submit" id="saveAiSettingsBtn" class="flex-1 bg-purple-500 text-white py-2 rounded-lg hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700 transition-colors flex items-center justify-center">
+                            <i data-lucide="save" class="w-4 h-4 mr-2"></i>
+                            Сохранить
+                        </button>
+                        <button type="button" id="cancelAiSettingsBtn" class="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 dark:bg-slate-600 dark:text-gray-200 dark:hover:bg-slate-500 transition-colors flex items-center justify-center">
+                            <i data-lucide="x" class="w-4 h-4 mr-2"></i>
+                            Отмена
+                        </button>
                     </div>
                 </form>
             </div>
