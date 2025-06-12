@@ -196,6 +196,15 @@ async function getAIPrediction(dataForPrompt) {
         local: !!lmStudioUrl
     });
 
+    // Проверяем наличие хотя бы одного доступного API
+    const hasAnyApi = hasGeminiKey || hasDeepseekKey || hasChatgptKey || hasOpenrouterKey || !!lmStudioUrl;
+    if (!hasAnyApi) {
+        return {
+            success: false,
+            error: "Нет настроенных API для прогноза. Пожалуйста, настройте хотя бы один источник ИИ в настройках."
+        };
+    }
+
     // Строим промпт
     const prompt = buildAIPrompt(dataForPrompt);
     console.log('=== Отладка: Сформированный промпт ===');
@@ -256,7 +265,10 @@ async function getAIPrediction(dataForPrompt) {
         }
     }
 
-    throw new Error('Нет доступных моделей для прогноза');
+    return {
+        success: false,
+        error: "Не удалось получить прогноз ни от одного из доступных источников ИИ. Пожалуйста, проверьте настройки и попробуйте снова."
+    };
 }
 
 /**
