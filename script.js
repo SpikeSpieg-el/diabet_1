@@ -1,3 +1,6 @@
+// Глобальные переменные
+let searchTimeout;
+
 const CR_KEY = 'diabetesCalcAdvPop_carbRatio'; 
 const SF_KEY = 'diabetesCalcAdvPop_sensitivityFactor';
 const TS_KEY = 'diabetesCalcAdvPop_targetSugar';
@@ -1652,13 +1655,29 @@ document.getElementById('cancelAddMealBtn').addEventListener('click', () => clos
 
 function renderNewMealProductOptions() {
     const selectEl = document.getElementById('newMealSelectedProduct');
+    const searchInput = document.getElementById('productSearchInput');
+    const searchQuery = searchInput ? searchInput.value.toLowerCase() : '';
+    
+    // Очищаем текущий список
     selectEl.innerHTML = '<option value="">Выберите продукт</option>';
-    products.forEach(p => {
+    
+    // Фильтруем и добавляем только подходящие продукты
+    const filteredProducts = products.filter(p => p.name.toLowerCase().includes(searchQuery));
+    
+    if (filteredProducts.length === 0) {
         const option = document.createElement('option');
-        option.value = p.id;
-        option.textContent = p.name;
+        option.value = "";
+        option.textContent = "Продукт не найден";
+        option.disabled = true;
         selectEl.appendChild(option);
-    });
+    } else {
+        filteredProducts.forEach(p => {
+            const option = document.createElement('option');
+            option.value = p.id;
+            option.textContent = p.name;
+            selectEl.appendChild(option);
+        });
+    }
 }
 
 function renderNewMealProductsList() {
@@ -2422,4 +2441,27 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelector(`.api-section[data-api="${selectedApi}"]`).style.display = 'block';
         });
     });
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Обработчик для кнопки сканирования штрих-кода
+    const scanBarcodeBtn = document.getElementById('scanBarcodeBtn');
+    if (scanBarcodeBtn) {
+        scanBarcodeBtn.addEventListener('click', function() {
+            const barcodeInput = document.getElementById('productBarcode');
+            if (barcodeInput && barcodeInput.value) {
+                handleBarcode(barcodeInput.value);
+            } else {
+                showAlertPopup('Введите штрих-код', 'warning');
+            }
+        });
+    }
+});
+
+// Добавляем обработчик поиска
+document.getElementById('productSearchInput').addEventListener('input', () => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        renderNewMealProductOptions();
+    }, 100);
 });
