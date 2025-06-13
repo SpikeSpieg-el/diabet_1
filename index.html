@@ -8,6 +8,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="style.css">
+    <script src="product_search.js"></script>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-900 dark:to-slate-800 transition-colors duration-300">
     <div id="app" class="container mx-auto p-4 max-w-7xl">
@@ -289,7 +290,41 @@
         </div>
 
         <!-- Продукты View -->
-        <div id="productsView" class="view-content bg-white rounded-xl shadow-lg p-6 dark:bg-slate-800" style="display: none;">
+        <div id="productsView" class="view-content space-y-6" style="display: none;">
+            <!-- Поиск продуктов -->
+            <div class="bg-white rounded-xl shadow-lg p-6 dark:bg-slate-800">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold dark:text-gray-100">Поиск продуктов</h2>
+                </div>
+                <div class="flex flex-col gap-4 mb-4">
+                    <div class="flex items-center space-x-4">
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="databaseSelect" value="openfoodfacts" checked class="form-radio text-blue-500">
+                            <span class="ml-2 text-gray-700 dark:text-gray-300">Open Food Facts</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="databaseSelect" value="fooddatacentral" class="form-radio text-blue-500">
+                            <span class="ml-2 text-gray-700 dark:text-gray-300">FoodData Central</span>
+                        </label>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <label class="inline-flex items-center">
+                            <input type="checkbox" id="autoTranslateCheckbox" checked class="form-checkbox text-blue-500">
+                            <span class="ml-2 text-gray-700 dark:text-gray-300">Автоматический перевод</span>
+                        </label>
+                    </div>
+                    <div class="flex gap-4">
+                        <input type="text" id="productSearchInput" placeholder="Введите название продукта..." 
+                               class="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button id="productSearchBtn" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 transition-colors">
+                            <i data-lucide="search" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                </div>
+                <div id="productSearchResults" class="space-y-2 max-h-96 overflow-y-auto">
+                    <!-- Результаты поиска будут здесь -->
+                </div>
+            </div>
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-xl font-semibold dark:text-gray-100">Реестр продуктов</h2>
                 <button id="showAddProductModalBtn" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 transition-colors flex items-center">
@@ -579,6 +614,18 @@
                             <input type="radio" id="defaultLocal" name="defaultModel" value="local" class="w-4 h-4 text-blue-600">
                             <label for="defaultLocal" class="ml-2 text-sm text-gray-600 dark:text-gray-400">Использовать по умолчанию</label>
                         </div>
+                    </div>
+
+                    <!-- FoodData Central API -->
+                    <div class="api-section" data-api="fooddatacentral" style="display: none;">
+                        <label for="foodDataCentralApiKey" class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            <i data-lucide="key-round" class="w-4 h-4 mr-2"></i>
+                            API-ключ FoodData Central
+                        </label>
+                        <input type="password" id="foodDataCentralApiKey" placeholder="Введите ваш API-ключ FoodData Central" class="w-full p-3 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-gray-50 dark:placeholder-gray-400">
+                        <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                            Получите API-ключ на <a href="https://fdc.nal.usda.gov/api-key-signup.html" target="_blank" class="text-blue-500 hover:text-blue-600">сайте FoodData Central</a>
+                        </p>
                     </div>
 
                     <div class="flex flex-col sm:flex-row gap-3 pt-4">
