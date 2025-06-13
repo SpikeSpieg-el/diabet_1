@@ -2154,17 +2154,57 @@ if (requestAiPredictionBtn) {
 
         // 4. Отображаем результат
         if (result.success) {
-            const { predicted_sugar, explanation, recommendation } = result.data;
+            const { predicted_sugar, explanation, recommendation, product_advice, next_measurement } = result.data;
             aiPredictionResultText.innerHTML = `
-                <div class="mb-2">
-                    <span class="font-bold text-lg ${getGlucoseColor(predicted_sugar)}">${predicted_sugar.toFixed(1)} ммоль/л</span>
-                    <span class="text-gray-500 dark:text-gray-400">(прогноз ИИ)</span>
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between border-b border-gray-200 dark:border-slate-700 pb-2">
+                        <div>
+                            <span class="text-sm text-gray-500 dark:text-gray-400">Прогноз уровня глюкозы</span>
+                            <div class="text-2xl font-bold ${getGlucoseColor(predicted_sugar)}">${predicted_sugar.toFixed(1)} ммоль/л</div>
+                        </div>
+                        <div class="text-xs text-gray-400 dark:text-gray-500">
+                            Прогноз на 2 часа
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <div>
+                            <div class="font-medium text-gray-700 dark:text-gray-300 mb-1">Обоснование прогноза</div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400">${explanation}</div>
+                        </div>
+
+                        <div>
+                            <div class="font-medium text-gray-700 dark:text-gray-300 mb-1">Рекомендации</div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400">${recommendation}</div>
+                        </div>
+
+                        <div>
+                            <div class="font-medium text-gray-700 dark:text-gray-300 mb-1">Советы по продуктам</div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400">${product_advice || 'Нет специальных рекомендаций по продуктам'}</div>
+                        </div>
+
+                        <div>
+                            <div class="font-medium text-gray-700 dark:text-gray-300 mb-1">Контроль сахара</div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400">${next_measurement || 'Рекомендуется стандартный контроль через 2 часа'}</div>
+                        </div>
+                    </div>
+
+                    <div class="text-xs text-gray-400 dark:text-gray-500 italic mt-4">
+                        Прогноз является оценочным и не заменяет измерение глюкометром
+                    </div>
                 </div>
-                <p class="mb-2"><strong>Обоснование:</strong> ${explanation}</p>
-                <p><strong>Рекомендация:</strong> ${recommendation}</p>
             `;
+            lucide.createIcons();
         } else {
-            aiPredictionResultText.innerHTML = `<span class="text-red-500"><strong>Ошибка:</strong> ${result.error}</span>`;
+            aiPredictionResultText.innerHTML = `
+                <div class="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                    <div class="text-red-600 dark:text-red-400">
+                        <div class="font-medium">Ошибка прогноза</div>
+                        <div class="text-sm">${result.error}</div>
+                    </div>
+                </div>
+            `;
+            lucide.createIcons();
         }
     });
 }

@@ -103,10 +103,21 @@ function buildAIPrompt(data) {
         data.glucoseRecords.forEach(record => {
             const recordTime = new Date(`${data.selectedDate}T${record.time}`);
             if (recordTime >= fiveHoursAgo) {
+                let glucoseDetails = `${record.glucose} ммоль/л`;
+                if (record.type === 'before') {
+                    glucoseDetails += ' (до еды)';
+                } else if (record.type === 'after') {
+                    glucoseDetails += ' (после еды)';
+                } else {
+                    glucoseDetails += ' (случайно)';
+                }
+                if (record.notes) {
+                    glucoseDetails += `. Заметка: ${record.notes}`;
+                }
                 timelineEvents.push({
                     time: record.time,
                     type: 'Измерение глюкозы',
-                    details: `${record.glucose} ммоль/л. (${record.type === 'before' ? 'до еды' : record.type === 'after' ? 'после еды' : 'случайно'})`
+                    details: glucoseDetails
                 });
             }
         });
@@ -117,15 +128,37 @@ function buildAIPrompt(data) {
         data.meals.forEach(meal => {
             const mealTime = new Date(`${data.selectedDate}T${meal.time}`);
             if (mealTime >= fiveHoursAgo) {
-                const mealStats = calculateMealStats(meal.products); // Эта функция должна быть доступна
-                let mealDetails = `Съедено ${mealStats.carbs} г. углеводов.`;
-                if (meal.actualInsulin && meal.actualInsulin > 0) {
-                    mealDetails += ` Введено ${meal.actualInsulin} ед. инсулина.`;
+                const mealStats = calculateMealStats(meal.products);
+                let mealDetails = [];
+                
+                // Добавляем информацию о продуктах
+                if (meal.products && meal.products.length > 0) {
+                    mealDetails.push('Продукты:');
+                    meal.products.forEach(product => {
+                        const productInfo = products.find(p => p.id === product.id);
+                        let productDetails = `- ${productInfo ? productInfo.name : 'Неизвестный продукт'}: ${product.amount}г`;
+                        if (product.notes) {
+                            productDetails += ` (${product.notes})`;
+                        }
+                        mealDetails.push(productDetails);
+                    });
                 }
+                
+                // Добавляем общую информацию об углеводах и инсулине
+                mealDetails.push(`Съедено ${mealStats.carbs} г. углеводов.`);
+                if (meal.actualInsulin && meal.actualInsulin > 0) {
+                    mealDetails.push(`Введено ${meal.actualInsulin} ед. инсулина.`);
+                }
+                
+                // Добавляем заметки к приему пищи, если есть
+                if (meal.notes) {
+                    mealDetails.push(`Заметка: ${meal.notes}`);
+                }
+
                 timelineEvents.push({
                     time: meal.time,
                     type: 'Прием пищи',
-                    details: mealDetails
+                    details: mealDetails.join('\n')
                 });
             }
         });
@@ -133,7 +166,13 @@ function buildAIPrompt(data) {
 
     timelineEvents.sort((a, b) => a.time.localeCompare(b.time));
 
-    const timelineString = timelineEvents.map(e => `- ${e.time}: ${e.type} - ${e.details}`).join('\n');
+    const timelineString = timelineEvents.map(e => {
+        if (typeof e.details === 'string') {
+            return `- ${e.time}: ${e.type} - ${e.details}`;
+        } else {
+            return `- ${e.time}: ${e.type}\n${e.details}`;
+        }
+    }).join('\n');
 
     const prompt = `
 Ты — эксперт-ассистент эндокринолога, специализирующийся на управлении сахарным диабетом 1 типа. Твоя задача — проанализировать данные пациента и дать **приблизительный прогноз** уровня сахара в крови на **2 часа вперед** от текущего времени.
@@ -150,10 +189,19 @@ function buildAIPrompt(data) {
 ${timelineString}
 
 **Твоя задача:**
-1.  **Проанализируй** предоставленные данные: учти время и количество съеденных углеводов, введенный инсулин, и как он должен действовать со временем (эффект ультракороткого инсулина длится около 4 часов). Учти "активный инсулин" (IOB) от недавних инъекций.
-2.  **Сделай прогноз**: Рассчитай наиболее вероятный уровень сахара в крови через 2 часа от текущего времени.
-3.  **Объясни свой прогноз**: Опиши логику своих рассуждений шаг за шагом. Например: "Учитывая съеденные углеводы, сахар должен был повыситься. Однако была введена доза инсулина, часть которой все еще активна. Мой прогноз основан на балансе этих факторов...".
-4.  **Дай краткие рекомендации**: Например, "Рекомендуется измерить сахар через час для контроля" или "Риск гипогликемии низкий, но будьте внимательны".
+1. **Проанализируй** предоставленные данные: 
+   - Учти время и количество съеденных углеводов
+   - Проанализируй состав продуктов и их влияние на сахар
+   - Учти введенный инсулин и его действие со временем
+   - Обрати внимание на заметки к измерениям и приемам пищи
+   - Учти "активный инсулин" (IOB) от недавних инъекций
+2. **Сделай прогноз**: Рассчитай наиболее вероятный уровень сахара в крови через 2 часа от текущего времени
+3. **Объясни свой прогноз**: Опиши логику своих рассуждений шаг за шагом
+4. **Дай рекомендации**: 
+   - По контролю сахара
+   - По корректировке доз инсулина
+   - По выбору продуктов
+   - По времени следующего измерения
 
 **Формат ответа:**
 Предоставь ответ строго в формате JSON. Не добавляй никаких других слов или форматирования до или после JSON.
@@ -162,7 +210,9 @@ ${timelineString}
 {
   "predicted_sugar": (число),
   "explanation": "(текстовое объяснение твоей логики)",
-  "recommendation": "(краткая рекомендация)"
+  "recommendation": "(краткая рекомендация)",
+  "product_advice": "(советы по продуктам и их влиянию на сахар)",
+  "next_measurement": "(рекомендации по времени следующего измерения)"
 }
 \`\`\`
 `;
