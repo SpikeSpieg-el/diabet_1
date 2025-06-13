@@ -345,14 +345,23 @@ async function getGeminiPrediction(prompt) {
 
         const data = await response.json();
         const content = data.candidates[0].content.parts[0].text;
-        const result = JSON.parse(content);
+        
+        // Извлекаем JSON из ответа, удаляя markdown форматирование
+        const jsonMatch = content.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+        if (!jsonMatch) {
+            throw new Error('Не удалось найти JSON в ответе');
+        }
+        
+        const result = JSON.parse(jsonMatch[1]);
 
         return {
             success: true,
             data: {
                 predicted_sugar: result.predicted_sugar,
                 explanation: result.explanation || "Нет объяснения",
-                recommendation: result.recommendation || "Нет рекомендаций"
+                recommendation: result.recommendation || "Нет рекомендаций",
+                product_advice: result.product_advice || "Нет рекомендаций по продуктам",
+                next_measurement: result.next_measurement || "Нет рекомендаций по времени измерения"
             }
         };
     } catch (error) {
